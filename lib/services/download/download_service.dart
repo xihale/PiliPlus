@@ -20,6 +20,7 @@ import 'package:PiliPlus/utils/extension/file_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -394,32 +395,41 @@ class DownloadService extends GetxService {
         return;
       }
 
+      final downloadHeaders = mediaFileInfo.httpHeader;
+
       switch (mediaFileInfo) {
         case Type1 mediaFileInfo:
           final first = mediaFileInfo.segmentList.first;
           _downloadManager = DownloadManager(
             url: first.url,
             path: path.join(videoDir.path, PathUtils.videoNameType1),
+            headers: downloadHeaders,
+            concurrency: Pref.downloadConcurrency,
             onReceiveProgress: _onReceive,
             onDone: _onDone,
           );
           break;
         case Type2 mediaFileInfo:
-          _downloadManager = DownloadManager(
-            url: mediaFileInfo.video.first.baseUrl,
-            path: path.join(videoDir.path, PathUtils.videoNameType2),
-            onReceiveProgress: _onReceive,
-            onDone: _onDone,
-          );
           final audio = mediaFileInfo.audio;
           if (audio != null && audio.isNotEmpty) {
+            // Start audio download in parallel with video
             _audioDownloadManager = DownloadManager(
               url: audio.first.baseUrl,
               path: path.join(videoDir.path, PathUtils.audioNameType2),
+              headers: downloadHeaders,
+              concurrency: Pref.downloadConcurrency,
               onReceiveProgress: null,
               onDone: _onAudioDone,
             );
           }
+          _downloadManager = DownloadManager(
+            url: mediaFileInfo.video.first.baseUrl,
+            path: path.join(videoDir.path, PathUtils.videoNameType2),
+            headers: downloadHeaders,
+            concurrency: Pref.downloadConcurrency,
+            onReceiveProgress: _onReceive,
+            onDone: _onDone,
+          );
           late final first = mediaFileInfo.video.first;
           entry.pageData
             ?..width = first.width
