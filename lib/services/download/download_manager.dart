@@ -121,12 +121,15 @@ class DownloadManager {
           receiveTimeout: Duration.zero,
           validateStatus: (s) => s != null && (s == 200 || s == 206),
         ),
+        cancelToken: _cancelToken,
       );
 
       final contentRange = _contentRangeTotal(initRes.headers);
       final totalBytes =
           contentRange ??
           int.tryParse(initRes.headers.value('content-length') ?? '');
+      final subscription = initRes.data?.stream.listen(null);
+      await subscription?.cancel();
 
       final bool supportsRange = initRes.statusCode == 206;
 
@@ -134,6 +137,12 @@ class DownloadManager {
         await _startSingleThread(totalBytes);
         return;
       }
+
+      final existingLength = file.existsSync() ? await file.length() : 0;
+      final inferredDownloadedBytes =
+          existingLength > 0 && existingLength < totalBytes
+          ? existingLength
+          : 0;
 
       // 2. 准备分片
       if (chunkFile.existsSync()) {
@@ -143,22 +152,36 @@ class DownloadManager {
               .map((e) => DownloadChunk.fromJson(e as Map<String, dynamic>))
               .toList();
           if (!_isValidChunks(chunks, totalBytes)) {
-            chunks = _createChunks(totalBytes);
+            chunks = _createChunks(
+              totalBytes,
+              initialDownloadedBytes: inferredDownloadedBytes,
+            );
           }
         } catch (_) {
-          chunks = _createChunks(totalBytes);
+          chunks = _createChunks(
+            totalBytes,
+            initialDownloadedBytes: inferredDownloadedBytes,
+          );
         }
       } else {
-        chunks = _createChunks(totalBytes);
+        chunks = _createChunks(
+          totalBytes,
+          initialDownloadedBytes: inferredDownloadedBytes,
+        );
       }
 
       // 预先创建完整大小的文件
-      if (!file.existsSync() || (await file.length()) != totalBytes) {
+      if (!file.existsSync()) {
         await file.create(recursive: true);
+      }
+      final fileLength = await file.length();
+      if (fileLength != totalBytes) {
         final raf = await file.open(mode: FileMode.write);
         await raf.truncate(totalBytes);
         await raf.close();
-        chunks = _createChunks(totalBytes);
+        if (fileLength > totalBytes) {
+          chunks = _createChunks(totalBytes);
+        }
       }
 
       // 3. 并发下载
@@ -241,19 +264,30 @@ class DownloadManager {
     }
   }
 
-  List<DownloadChunk> _createChunks(int totalBytes) {
+  List<DownloadChunk> _createChunks(
+    int totalBytes, {
+    int initialDownloadedBytes = 0,
+  }) {
     final chunks = <DownloadChunk>[];
     final chunkSize = (totalBytes / concurrency).ceil();
+    var remainingDownloaded = initialDownloadedBytes.clamp(0, totalBytes);
     for (var i = 0; i < concurrency; i++) {
       final start = i * chunkSize;
       if (start >= totalBytes) break;
       final end = (i + 1) * chunkSize - 1;
+      final clampedEnd = end > totalBytes - 1 ? totalBytes - 1 : end;
+      final length = clampedEnd - start + 1;
+      final downloaded = remainingDownloaded > 0
+          ? (remainingDownloaded > length ? length : remainingDownloaded)
+          : 0;
       chunks.add(
         DownloadChunk(
           start: start,
-          end: end > totalBytes - 1 ? totalBytes - 1 : end,
+          end: clampedEnd,
+          downloaded: downloaded,
         ),
       );
+      remainingDownloaded -= downloaded;
     }
     return chunks;
   }
@@ -449,19 +483,17 @@ class DownloadManager {
 
       try {
         final onProgress = onReceiveProgress;
-        if (onProgress != null && totalBytes != null) {
-          int? last;
-          await for (final chunk in data.stream) {
-            sink.add(chunk);
-            received += chunk.length;
+        int? last;
+        await for (final chunk in data.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (onProgress != null && totalBytes != null) {
             final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
             if (last != now) {
               last = now;
               onProgress.call(received, totalBytes);
             }
           }
-        } else {
-          await sink.addStream(data.stream);
         }
         await sink.flush();
         retry = 0;

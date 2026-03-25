@@ -574,6 +574,12 @@ List<SettingsModel> get extraSettings => [
     leading: Icon(Icons.more_time_outlined),
     onTap: _showReplyDelayDialog,
   ),
+  const NormalModel(
+    title: '下载并发数',
+    subtitle: '仅对支持 Range 的新下载任务生效',
+    leading: Icon(Icons.download_outlined),
+    onTap: _showDownloadConcurrencyDialog,
+  ),
   NormalModel(
     title: '评论展示',
     leading: const Icon(Icons.whatshot_outlined),
@@ -1106,6 +1112,28 @@ Future<void> _showReplyDelayDialog(
     await GStorage.setting.put(SettingBoxKey.retryDelay, res.toInt());
     setState();
     SmartDialog.showToast('重启生效');
+  }
+}
+
+Future<void> _showDownloadConcurrencyDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final res = await showDialog<double>(
+    context: context,
+    builder: (context) => SliderDialog(
+      title: '下载并发数',
+      min: 1,
+      max: 8,
+      divisions: 7,
+      precise: 0,
+      value: Pref.downloadConcurrency.toDouble(),
+    ),
+  );
+  if (res != null) {
+    await GStorage.setting.put(SettingBoxKey.downloadConcurrency, res.toInt());
+    setState();
+    SmartDialog.showToast('新下载任务生效');
   }
 }
 

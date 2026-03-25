@@ -54,6 +54,37 @@ class DownloadService extends GetxService {
   DownloadManager? _downloadManager;
   DownloadManager? _audioDownloadManager;
 
+  int _videoDownloadedBytes = 0;
+  int _videoTotalBytes = 0;
+  int _audioDownloadedBytes = 0;
+  int _audioTotalBytes = 0;
+
+  void _resetProgressState() {
+    _videoDownloadedBytes = 0;
+    _videoTotalBytes = 0;
+    _audioDownloadedBytes = 0;
+    _audioTotalBytes = 0;
+  }
+
+  int get _combinedDownloadedBytes =>
+      _videoDownloadedBytes + _audioDownloadedBytes;
+
+  int get _combinedTotalBytes => _videoTotalBytes + _audioTotalBytes;
+
+  void _syncCurrentProgress(DownloadStatus status) {
+    if (curDownload.value case final entry?) {
+      final totalBytes = _combinedTotalBytes;
+      if (totalBytes != 0 && entry.totalBytes != totalBytes) {
+        entry.totalBytes = totalBytes;
+        _updateBiliDownloadEntryJson(entry);
+      }
+      entry
+        ..downloadedBytes = _combinedDownloadedBytes
+        ..status = status;
+      curDownload.refresh();
+    }
+  }
+
   late Future<void> waitForInitialization;
 
   @override
@@ -285,6 +316,7 @@ class DownloadService extends GetxService {
       await _audioDownloadManager?.cancel(isDelete: false);
       _downloadManager = null;
       _audioDownloadManager = null;
+      _resetProgressState();
       if (curDownload.value case final curEntry?) {
         if (curEntry.status.isDownloading) {
           curEntry.status = DownloadStatus.pause;
@@ -418,7 +450,7 @@ class DownloadService extends GetxService {
               path: path.join(videoDir.path, PathUtils.audioNameType2),
               headers: downloadHeaders,
               concurrency: Pref.downloadConcurrency,
-              onReceiveProgress: null,
+              onReceiveProgress: _onAudioReceive,
               onDone: _onAudioDone,
             );
           }
@@ -456,20 +488,24 @@ class DownloadService extends GetxService {
   }
 
   void _onReceive(int progress, int total) {
-    if (curDownload.value case final entry?) {
-      if (progress == 0 && total != 0) {
-        _updateBiliDownloadEntryJson(entry..totalBytes = total);
-      }
-      entry
-        ..downloadedBytes = progress
-        ..status = DownloadStatus.downloading;
-      curDownload.refresh();
-    }
+    _videoDownloadedBytes = progress;
+    _videoTotalBytes = total;
+    _syncCurrentProgress(DownloadStatus.downloading);
+  }
+
+  void _onAudioReceive(int progress, int total) {
+    _audioDownloadedBytes = progress;
+    _audioTotalBytes = total;
+    _syncCurrentProgress(
+      _downloadManager?.status == DownloadStatus.completed
+          ? DownloadStatus.audioDownloading
+          : DownloadStatus.downloading,
+    );
   }
 
   void _onDone([Object? error]) {
     if (error != null) {
-      _updateCurStatus(_downloadManager?.status ?? DownloadStatus.pause);
+      _syncCurrentProgress(_downloadManager?.status ?? DownloadStatus.pause);
       return;
     }
 
@@ -478,13 +514,11 @@ class DownloadService extends GetxService {
       DownloadStatus.failDownload => DownloadStatus.failDownloadAudio,
       _ => _downloadManager?.status ?? DownloadStatus.pause,
     };
-    _updateCurStatus(status);
-
     if (curDownload.value case final curEntryInfo?) {
-      curEntryInfo.downloadedBytes = curEntryInfo.totalBytes;
       if (status == DownloadStatus.completed) {
         _completeDownload();
       } else {
+        _syncCurrentProgress(status);
         _updateBiliDownloadEntryJson(curEntryInfo);
       }
     }
@@ -496,7 +530,7 @@ class DownloadService extends GetxService {
         _completeDownload();
       } else {
         final status = _audioDownloadManager?.status ?? DownloadStatus.pause;
-        _updateCurStatus(
+        _syncCurrentProgress(
           status == DownloadStatus.failDownload
               ? DownloadStatus.failDownloadAudio
               : status,
@@ -521,6 +555,7 @@ class DownloadService extends GetxService {
     curDownload.value = null;
     _downloadManager = null;
     _audioDownloadManager = null;
+    _resetProgressState();
     nextDownload();
   }
 

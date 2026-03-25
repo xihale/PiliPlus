@@ -964,6 +964,16 @@ abstract final class Pref {
   static bool get saveReply =>
       _setting.get(SettingBoxKey.saveReply, defaultValue: true);
 
-  static int get downloadConcurrency =>
-      _setting.get(SettingBoxKey.downloadConcurrency, defaultValue: 4);
+  static int get downloadConcurrency {
+    final value = _setting.get(
+      SettingBoxKey.downloadConcurrency,
+      defaultValue: 4,
+    );
+    return switch (value) {
+      int value when value < 1 => 1,
+      int value when value > 8 => 8,
+      int value => value,
+      _ => 4,
+    };
+  }
 }
