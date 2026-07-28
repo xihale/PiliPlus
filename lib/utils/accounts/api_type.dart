@@ -31,7 +31,8 @@ abstract final class ApiType {
       Api.onlineTotal,
       Api.dynamicDetail,
       Api.aiConclusion,
-      Api.getSeasonDetailApi,
+      Api.seasonArchives,
+      Api.seriesArchives,
       Api.liveRoomDmToken,
       Api.liveRoomDmPrefetch,
       Api.superChatMsg,
@@ -87,6 +88,7 @@ abstract final class ApiType {
       Api.dynTopicRcmd,
       Api.topicFeed,
       Api.topicTop,
+      Api.liveFeedback,
     },
     // progress
     AccountType.video: {

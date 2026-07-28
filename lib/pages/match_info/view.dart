@@ -8,6 +8,8 @@ import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models_new/match/match_info/contest.dart';
 import 'package:PiliPlus/models_new/match/match_info/team.dart';
 import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
+import 'package:PiliPlus/pages/common/fab_mixin.dart'
+    show NoBottomPaddingFabLocation;
 import 'package:PiliPlus/pages/match_info/controller.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
@@ -37,36 +39,33 @@ class _MatchInfoPageState extends CommonDynPageState<MatchInfoPage> {
   dynamic get arguments => null;
 
   @override
-  Offset get fabOffset => const Offset(0, 2);
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
+    final child = Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('比赛详情')),
       body: ViewSafeArea(
         child: refreshIndicator(
           onRefresh: controller.onRefresh,
           child: CustomScrollView(
-            controller: scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              Obx(() => _buildInfo(theme, controller.infoState.value)),
-              buildReplyHeader(theme),
-              Obx(() => replyList(theme, controller.loadingState.value)),
+              Obx(() => _buildInfo(controller.infoState.value)),
+              buildReplyHeader(),
+              Obx(() => replyList(controller.loadingState.value)),
             ],
           ),
         ),
       ).constraintWidth(),
+      floatingActionButtonLocation: const NoBottomPaddingFabLocation(),
       floatingActionButton: SlideTransition(
-        position: fabAnim,
-        child: replyButton,
+        position: fabAnimation,
+        child: fabButton,
       ),
     );
+    return fabAnimWrapper(child: child);
   }
 
-  Widget _buildInfo(ThemeData theme, LoadingState<MatchContest?> infoState) {
+  Widget _buildInfo(LoadingState<MatchContest?> infoState) {
     if (infoState case Success(:final response?)) {
       try {
         Widget teamInfo(MatchTeam team) {
@@ -188,12 +187,7 @@ class _MatchInfoPageState extends CommonDynPageState<MatchInfoPage> {
   }
 
   @override
-  void replyReply(
-    BuildContext context,
-    ReplyInfo replyItem,
-    int? id,
-    ThemeData theme,
-  ) {
+  void replyReply(BuildContext context, ReplyInfo replyItem, int? id) {
     EasyThrottle.throttle('replyReply', const Duration(milliseconds: 500), () {
       int oid = replyItem.oid.toInt();
       int rpid = replyItem.id.toInt();

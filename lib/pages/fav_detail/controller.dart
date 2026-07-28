@@ -16,7 +16,7 @@ import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:flutter/services.dart' show ValueChanged;
+import 'package:flutter/widgets.dart' show Text, ValueChanged;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
@@ -51,8 +51,8 @@ mixin BaseFavController
   void onRemove() {
     showConfirmDialog(
       context: Get.context!,
-      content: '确认删除所选收藏吗？',
-      title: '提示',
+      title: const Text('提示'),
+      content: const Text('确认删除所选收藏吗？'),
       onConfirm: () async {
         final removeList = allChecked.toSet();
         final res = await FavHttp.favVideo(
@@ -80,11 +80,11 @@ class FavDetailController
   late int mediaId;
   late String heroTag;
   final Rx<FavFolderInfo> folderInfo = FavFolderInfo().obs;
-  final Rx<bool?> _isOwner = Rx<bool?>(null);
+  final RxBool _isOwner = false.obs;
   final Rx<FavOrderType> order = FavOrderType.mtime.obs;
 
   @override
-  bool get isOwner => _isOwner.value ?? false;
+  bool get isOwner => _isOwner.value;
 
   late final account = Accounts.main;
 
@@ -184,8 +184,10 @@ class FavDetailController
       folderInfo
         ..value.favState = isFav ? 0 : 1
         ..refresh();
+      SmartDialog.showToast('${isFav ? '取消' : ''}收藏成功');
+    } else {
+      res.toast();
     }
-    res.toast();
   }
 
   Future<void> cleanFav() async {
@@ -213,6 +215,7 @@ class FavDetailController
   @override
   void onViewFav(FavDetailItemModel item, int? index) {
     final folder = folderInfo.value;
+    // TODO: dimension
     PageUtils.toVideoPage(
       bvid: item.bvid,
       cid: item.ugc!.firstCid!,

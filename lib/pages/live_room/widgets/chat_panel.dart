@@ -1,12 +1,14 @@
 import 'package:PiliPlus/common/widgets/flutter/popup_menu.dart';
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/scroll_physics.dart'
+    show platformClampingPhysics;
 import 'package:PiliPlus/http/live.dart';
-import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models_new/live/live_danmaku/danmaku_msg.dart';
 import 'package:PiliPlus/models_new/live/live_superchat/item.dart';
 import 'package:PiliPlus/pages/live_room/controller.dart';
 import 'package:PiliPlus/pages/live_room/superchat/superchat_card.dart';
+import 'package:PiliPlus/pages/member/widget/medal_widget.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/utils.dart';
@@ -52,29 +54,44 @@ class LiveRoomChatPanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             controller: liveRoomController.scrollController,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemCount: liveRoomController.messages.length,
-            physics: const ClampingScrollPhysics(),
+            itemCount: liveRoomController.builtLength =
+                liveRoomController.messages.length,
+            physics: platformClampingPhysics,
             itemBuilder: (_, index) {
               final item = liveRoomController.messages[index];
               if (item is DanmakuMsg) {
+                WidgetSpan? medal;
+                if (item.medalInfo case final medalInfo?) {
+                  try {
+                    medal = WidgetSpan(
+                      child: Padding(
+                        padding: const .only(right: 4),
+                        child: MedalWidget.fromMedalInfo(
+                          medal: medalInfo,
+                          padding: MedalWidget.mediumPadding,
+                        ),
+                      ),
+                    );
+                  } catch (e, s) {
+                    if (kDebugMode) {
+                      Utils.reportError(e, s);
+                    }
+                  }
+                }
                 return Align(
                   alignment: Alignment.centerLeft,
                   child: Builder(
                     builder: (itemContext) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
+                        padding: const .symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: bg,
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(14),
-                          ),
+                          borderRadius: const .all(.circular(14)),
                         ),
                         child: Text.rich(
                           TextSpan(
                             children: [
+                              ?medal,
                               TextSpan(
                                 text: '${item.name}: ',
                                 style: TextStyle(
@@ -204,17 +221,10 @@ class LiveRoomChatPanel extends StatelessWidget {
                   right: 12,
                   bottom: 0,
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      visualDensity: VisualDensity.comfortable,
-                    ),
-                    icon: const Icon(
-                      Icons.arrow_downward_rounded,
-                      size: 20,
-                    ),
+                    style: const ButtonStyle(visualDensity: .comfortable),
+                    icon: const Icon(Icons.arrow_downward_rounded, size: 20),
                     label: const Text('回到底部'),
-                    onPressed: () => liveRoomController
-                      ..disableAutoScroll.value = false
-                      ..jumpToBottom(),
+                    onPressed: liveRoomController.handleJumpToBottom,
                   ),
                 )
               : const SizedBox.shrink(),
@@ -226,14 +236,20 @@ class LiveRoomChatPanel extends StatelessWidget {
   InlineSpan _buildMsg(double devicePixelRatio, DanmakuMsg obj) {
     final uemote = obj.uemote;
     if (uemote != null) {
-      // "room_{{room_id}}_{{int}}" or "upower_[{{emote}}]"
-      final isUpower = uemote.isUpower;
+      // "room_{{room_id}}_{{int}}" , "upower_[{{emote}}]" , "official_{{int}}"
+      final double width, height;
+      if (uemote.isOfficial) {
+        width = uemote.width / devicePixelRatio;
+        height = uemote.height / devicePixelRatio;
+      } else {
+        width = height = 162.0 / devicePixelRatio;
+      }
       return WidgetSpan(
         child: NetworkImgLayer(
           src: uemote.url,
-          type: ImageType.emote,
-          width: isUpower ? uemote.width : uemote.width / devicePixelRatio,
-          height: isUpower ? uemote.height : uemote.height / devicePixelRatio,
+          type: .emote,
+          width: width,
+          height: height,
         ),
       );
     }
@@ -250,7 +266,7 @@ class LiveRoomChatPanel extends StatelessWidget {
             WidgetSpan(
               child: NetworkImgLayer(
                 src: emote.url,
-                type: ImageType.emote,
+                type: .emote,
                 width: emote.width,
                 height: emote.height,
               ),

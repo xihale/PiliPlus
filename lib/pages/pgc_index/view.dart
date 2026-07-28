@@ -1,4 +1,4 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
 import 'package:PiliPlus/common/widgets/self_sized_horizontal_list.dart';
@@ -58,7 +58,7 @@ class _PgcIndexPageState extends State<PgcIndexPage>
   ) {
     final padding = MediaQuery.viewPaddingOf(context);
     return switch (loadingState) {
-      Loading() => loadingWidget,
+      Loading() => m3eLoading,
       Success(:final response) => Builder(
         builder: (context) {
           int count =
@@ -84,8 +84,8 @@ class _PgcIndexPageState extends State<PgcIndexPage>
                 ),
                 SliverPadding(
                   padding: EdgeInsets.only(
-                    left: StyleString.safeSpace,
-                    right: StyleString.safeSpace,
+                    left: Style.safeSpace,
+                    right: Style.safeSpace,
                     top: 12,
                     bottom: padding.bottom + 100,
                   ),
@@ -197,11 +197,11 @@ class _PgcIndexPageState extends State<PgcIndexPage>
       if (count > 5) ...[
         const SizedBox(height: 8),
         GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _ctr.isExpand.value = !_ctr.isExpand.value,
+          behavior: .opaque,
+          onTap: _ctr.isExpand.toggle,
           child: Center(
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: .min,
               children: [
                 Text(
                   _ctr.isExpand.value ? '收起' : '展开',
@@ -224,8 +224,8 @@ class _PgcIndexPageState extends State<PgcIndexPage>
   );
 
   late final gridDelegate = SliverGridDelegateWithExtentAndRatio(
-    mainAxisSpacing: StyleString.cardSpace,
-    crossAxisSpacing: StyleString.cardSpace,
+    mainAxisSpacing: Style.cardSpace,
+    crossAxisSpacing: Style.cardSpace,
     maxCrossAxisExtent: Grid.smallCardWidth * 0.6,
     childAspectRatio: 0.75,
     mainAxisExtent: MediaQuery.textScalerOf(context).scale(50),

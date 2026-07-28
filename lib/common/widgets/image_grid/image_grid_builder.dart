@@ -18,7 +18,7 @@
 import 'dart:collection' show HashSet;
 import 'dart:math' as math;
 
-import 'package:PiliPlus/common/constants.dart' show StyleString;
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart'
     show ImageModel;
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -37,7 +37,9 @@ import 'package:flutter/rendering.dart'
         BoxHitTestEntry,
         ContainerParentDataMixin,
         InformationCollector,
-        DiagnosticsDebugCreator;
+        DiagnosticsDebugCreator,
+        RenderObjectVisitor,
+        SemanticsConfiguration;
 
 /// ref [LayoutBuilder]
 
@@ -94,11 +96,10 @@ class RenderImageGrid extends RenderBox
         RenderBoxContainerDefaultsMixin<RenderBox, MultiChildLayoutParentData>,
         RenderObjectWithLayoutCallbackMixin {
   RenderImageGrid({
-    required ValueChanged<int> onTap,
+    required this._onTap,
     required OnShowMenu? onSecondaryTapUp,
     required OnShowMenu? onLongPressStart,
-  }) : _onTap = onTap,
-       _onSecondaryTapUp = onSecondaryTapUp,
+  }) : _onSecondaryTapUp = onSecondaryTapUp,
        _onLongPressStart = onLongPressStart {
     _tapGestureRecognizer = TapGestureRecognizer()..onTap = _handleOnTap;
     if (onSecondaryTapUp != null) {
@@ -249,6 +250,23 @@ class RenderImageGrid extends RenderBox
     _onSecondaryTapUp = null;
     _onLongPressStart = null;
     super.dispose();
+  }
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    RenderBox? child = firstChild;
+    while (child != null) {
+      visitor(child);
+      child = (child.parentData as MultiChildLayoutParentData).nextSibling;
+    }
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    config
+      ..explicitChildNodes = true
+      ..isSemanticBoundary = true;
   }
 
   @override
@@ -481,7 +499,7 @@ class ImageGridRenderObjectElement extends RenderObjectElement {
     List<ImageModel> picArr,
     BoxConstraints layoutInfo,
   ) {
-    final maxWidth = layoutInfo.maxWidth;
+    final maxWidth = math.min(525.0, layoutInfo.maxWidth);
     double imageWidth;
     double imageHeight;
     final length = picArr.length;
@@ -497,7 +515,7 @@ class ImageGridRenderObjectElement extends RenderObjectElement {
         final height = img.height;
         final ratioWH = width / height;
         final ratioHW = height / width;
-        imageWidth = ratioWH > 1.5
+        imageWidth = ratioWH > 1.45
             ? maxWidth
             : (ratioWH >= 1 || (height > width && ratioHW < 1.5))
             ? 2 * imageWidth
@@ -505,7 +523,7 @@ class ImageGridRenderObjectElement extends RenderObjectElement {
         if (width != 1) {
           imageWidth = math.min(imageWidth, width.toDouble());
         }
-        imageHeight = imageWidth * math.min(ratioHW, StyleString.imgMaxRatio);
+        imageHeight = imageWidth * math.min(ratioHW, Style.imgMaxRatio);
       }
     }
 

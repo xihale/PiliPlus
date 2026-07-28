@@ -1,8 +1,11 @@
 import 'dart:math';
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/style.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
+import 'package:PiliPlus/common/widgets/translucent_row.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/reply.dart';
@@ -12,6 +15,7 @@ import 'package:PiliPlus/models/dynamics/result.dart';
 import 'package:PiliPlus/pages/dynamics/controller.dart';
 import 'package:PiliPlus/pages/save_panel/view.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/color_utils.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -20,8 +24,8 @@ import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
-import 'package:PiliPlus/utils/utils.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -51,21 +55,6 @@ class AuthorPanel extends StatelessWidget {
     this.onEdit,
     this.onSetReplySubject,
   });
-
-  Widget _buildAvatar(ModuleAuthorModel moduleAuthor) {
-    final pendant = moduleAuthor.pendant?.image;
-    final hasPendant = pendant != null && pendant.isNotEmpty;
-    Widget avatar = PendantAvatar(
-      avatar: moduleAuthor.face,
-      size: hasPendant ? 34 : 40,
-      officialType: null, // 已被注释
-      garbPendantImage: pendant,
-    );
-    if (hasPendant) {
-      avatar = Padding(padding: const EdgeInsets.all(3), child: avatar);
-    }
-    return avatar;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,147 +94,152 @@ class AuthorPanel extends StatelessWidget {
         );
       }
     }
+    final children = [
+      PendantAvatar(
+        size: 40,
+        moduleAuthor.face,
+        pendantImage: moduleAuthor.pendant?.image,
+      ),
+      Flexible(
+        child: Column(
+          crossAxisAlignment: .start,
+          children: [
+            Text(
+              moduleAuthor.name!,
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: TextStyle(
+                color:
+                    moduleAuthor.vip != null &&
+                        moduleAuthor.vip!.status > 0 &&
+                        moduleAuthor.vip!.type == 2
+                    ? theme.colorScheme.vipColor
+                    : theme.colorScheme.onSurface,
+                fontSize: theme.textTheme.titleSmall!.fontSize,
+              ),
+            ),
+            ?pubTs,
+          ],
+        ),
+      ),
+    ];
+    Widget header;
+    if (moduleAuthor.type == 'AUTHOR_TYPE_NORMAL') {
+      header = GestureDetector(
+        onTap: () => {
+          feedBack(),
+          Get.toNamed('/member?mid=${moduleAuthor.mid}'),
+        },
+        child: TranslucentRow(
+          spacing: 10,
+          extraWidth: 50,
+          children: children,
+        ),
+      );
+    } else {
+      header = Row(spacing: 10, children: children);
+    }
+    Widget? moreBtn = isSave
+        ? null
+        : SizedBox(
+            width: 32,
+            height: 32,
+            child: IconButton(
+              tooltip: '更多',
+              style: const ButtonStyle(
+                padding: WidgetStatePropertyAll(EdgeInsets.zero),
+              ),
+              onPressed: () => morePanel(context),
+              icon: const Icon(Icons.more_vert_outlined, size: 18),
+            ),
+          );
     final moduleTagText = !isDetail ? item.modules.moduleTag?.text : null;
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: moduleAuthor.type == 'AUTHOR_TYPE_NORMAL'
-                ? () {
-                    feedBack();
-                    Get.toNamed('/member?mid=${moduleAuthor.mid}');
-                  }
-                : null,
-            child: Row(
-              spacing: 10,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildAvatar(moduleAuthor),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      moduleAuthor.name ?? '',
-                      style: TextStyle(
-                        color:
-                            moduleAuthor.vip != null &&
-                                moduleAuthor.vip!.status > 0 &&
-                                moduleAuthor.vip!.type == 2
-                            ? theme.colorScheme.vipColor
-                            : theme.colorScheme.onSurface,
-                        fontSize: theme.textTheme.titleSmall!.fontSize,
-                      ),
-                    ),
-                    ?pubTs,
-                  ],
+    if (moduleTagText != null) {
+      header = Row(
+        children: [
+          Expanded(child: header),
+          Container(
+            padding: const .symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              borderRadius: const .all(.circular(4)),
+              border: .all(width: 1.25, color: theme.colorScheme.primary),
+            ),
+            child: Text(
+              moduleTagText,
+              style: TextStyle(
+                height: 1,
+                fontSize: 12,
+                color: theme.colorScheme.primary,
+              ),
+              strutStyle: const StrutStyle(height: 1, leading: 0, fontSize: 12),
+            ),
+          ),
+          ?moreBtn,
+        ],
+      );
+    } else if (moduleAuthor.decorate != null) {
+      const height = 32.0;
+      header = Stack(
+        clipBehavior: .none,
+        children: [
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(
+              child: CachedNetworkImage(
+                height: height,
+                memCacheHeight: height.cacheSize(context),
+                imageUrl: ImageUtils.safeThumbnailUrl(
+                  moduleAuthor.decorate!.cardUrl,
                 ),
-              ],
+                placeholder: (_, _) => const SizedBox.shrink(),
+              ),
             ),
           ),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: moduleTagText != null
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(4),
-                        ),
-                        border: Border.all(
-                          width: 1.25,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      child: Text(
-                        moduleTagText,
-                        style: TextStyle(
-                          height: 1,
-                          fontSize: 12,
-                          color: theme.colorScheme.primary,
-                        ),
-                        strutStyle: const StrutStyle(
-                          height: 1,
-                          leading: 0,
-                          fontSize: 12,
-                        ),
-                      ),
+          if (moduleAuthor.decorate!.fan?.numStr?.isNotEmpty == true)
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: height,
+              child: Center(
+                child: Text(
+                  moduleAuthor.decorate!.fan!.numStr!.toString(),
+                  style: TextStyle(
+                    height: 1,
+                    fontSize: 11,
+                    fontFamily: Assets.digitalNum,
+                    color: ColourUtils.parseColor(
+                      moduleAuthor.decorate!.fan!.color!,
                     ),
-                    _moreWidget(context),
-                  ],
-                )
-              : moduleAuthor.decorate != null
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.centerRight,
-                      children: [
-                        CachedNetworkImage(
-                          height: 32,
-                          memCacheHeight: 32.cacheSize(context),
-                          imageUrl: ImageUtils.safeThumbnailUrl(
-                            moduleAuthor.decorate!.cardUrl,
-                          ),
-                          placeholder: (_, _) => const SizedBox.shrink(),
-                        ),
-                        if (moduleAuthor.decorate!.fan?.numStr?.isNotEmpty ==
-                            true)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 32),
-                            child: Text(
-                              '${moduleAuthor.decorate!.fan!.numStr}',
-                              style: TextStyle(
-                                height: 1,
-                                fontSize: 11,
-                                fontFamily: 'digital_id_num',
-                                color:
-                                    moduleAuthor.decorate!.fan?.color
-                                            ?.startsWith('#') ==
-                                        true
-                                    ? Utils.parseColor(
-                                        moduleAuthor.decorate!.fan!.color!,
-                                      )
-                                    : null,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    _moreWidget(context),
-                  ],
-                )
-              : _moreWidget(context),
-        ),
-      ],
-    );
-  }
-
-  Widget _moreWidget(BuildContext context) => isSave
-      ? const SizedBox.shrink()
-      : SizedBox(
-          width: 32,
-          height: 32,
-          child: IconButton(
-            tooltip: '更多',
-            style: const ButtonStyle(
-              padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                  ),
+                ),
+              ),
             ),
-            onPressed: () => morePanel(context),
-            icon: const Icon(Icons.more_vert_outlined, size: 18),
+          Padding(
+            padding: const .only(right: 80),
+            child: header,
           ),
+        ],
+      );
+      if (moreBtn != null) {
+        header = Row(
+          children: [
+            Expanded(child: header),
+            moreBtn,
+          ],
         );
+      }
+    } else if (moreBtn != null) {
+      header = Row(
+        children: [
+          Expanded(child: header),
+          moreBtn,
+        ],
+      );
+    }
+    return header;
+  }
 
   void morePanel(BuildContext context) {
     String? bvid;
@@ -283,7 +277,7 @@ class AuthorPanel extends StatelessWidget {
             children: [
               InkWell(
                 onTap: Get.back,
-                borderRadius: StyleString.bottomSheetRadius,
+                borderRadius: Style.bottomSheetRadius,
                 child: SizedBox(
                   height: 35,
                   child: Center(
@@ -328,7 +322,7 @@ class AuthorPanel extends StatelessWidget {
                 leading: const Icon(Icons.share_outlined, size: 19),
                 onTap: () {
                   Get.back();
-                  Utils.shareText(
+                  ShareUtils.shareText(
                     '${HttpString.dynamicShareBaseUrl}/${item.idStr}',
                   );
                 },
@@ -404,14 +398,7 @@ class AuthorPanel extends StatelessWidget {
                     );
                   },
                   minLeadingWidth: 0,
-                  leading: const Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 19),
-                      Icon(Icons.published_with_changes_sharp, size: 12),
-                    ],
-                  ),
+                  leading: const Icon(CustomIcons.shield_published, size: 19),
                   title: Text('检查动态', style: theme.textTheme.titleSmall!),
                 ),
                 if (onSetTop != null)
@@ -446,41 +433,37 @@ class AuthorPanel extends StatelessWidget {
                               final reply = response.upReply;
                               final enableReply = reply.status == 1;
 
-                              return AlertDialog(
+                              return SimpleDialog(
                                 clipBehavior: .hardEdge,
                                 contentPadding: const .symmetric(vertical: 12),
-                                content: Column(
-                                  mainAxisSize: .min,
-                                  crossAxisAlignment: .start,
-                                  children: [
-                                    ListTile(
-                                      dense: true,
-                                      enabled: selection.canModify,
-                                      title: Text(
-                                        '${enableSelection ? '停止' : '开启'}评论精选',
-                                        style: const TextStyle(fontSize: 14),
-                                      ),
-                                      onTap: () {
-                                        Get.back();
-                                        onSetReplySubject!(
-                                          enableSelection ? 2 : 1,
-                                        );
-                                      },
+                                children: [
+                                  ListTile(
+                                    dense: true,
+                                    enabled: selection.canModify,
+                                    title: Text(
+                                      '${enableSelection ? '停止' : '开启'}评论精选',
+                                      style: const TextStyle(fontSize: 14),
                                     ),
-                                    ListTile(
-                                      dense: true,
-                                      enabled: reply.canModify,
-                                      title: Text(
-                                        '${enableReply ? '关闭' : '恢复'}评论',
-                                        style: const TextStyle(fontSize: 14),
-                                      ),
-                                      onTap: () {
-                                        Get.back();
-                                        onSetReplySubject!(enableReply ? 3 : 4);
-                                      },
+                                    onTap: () {
+                                      Get.back();
+                                      onSetReplySubject!(
+                                        enableSelection ? 2 : 1,
+                                      );
+                                    },
+                                  ),
+                                  ListTile(
+                                    dense: true,
+                                    enabled: reply.canModify,
+                                    title: Text(
+                                      '${enableReply ? '关闭' : '恢复'}评论',
+                                      style: const TextStyle(fontSize: 14),
                                     ),
-                                  ],
-                                ),
+                                    onTap: () {
+                                      Get.back();
+                                      onSetReplySubject!(enableReply ? 3 : 4);
+                                    },
+                                  ),
+                                ],
                               );
                             },
                           );
@@ -519,32 +502,29 @@ class AuthorPanel extends StatelessWidget {
 
                       showDialog(
                         context: context,
-                        builder: (context) => AlertDialog(
+                        builder: (context) => SimpleDialog(
                           clipBehavior: Clip.hardEdge,
                           contentPadding: const .symmetric(vertical: 12),
-                          content: Column(
-                            mainAxisSize: .min,
-                            children: [
-                              ListTile(
-                                dense: true,
-                                enabled: isPrivate,
-                                title: const Text(
-                                  '所有用户可见',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                onTap: onTap,
+                          children: [
+                            ListTile(
+                              dense: true,
+                              enabled: isPrivate,
+                              title: const Text(
+                                '所有用户可见',
+                                style: TextStyle(fontSize: 14),
                               ),
-                              ListTile(
-                                dense: true,
-                                enabled: !isPrivate,
-                                title: const Text(
-                                  '仅自己可见',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                onTap: onTap,
+                              onTap: onTap,
+                            ),
+                            ListTile(
+                              dense: true,
+                              enabled: !isPrivate,
+                              title: const Text(
+                                '仅自己可见',
+                                style: TextStyle(fontSize: 14),
                               ),
-                            ],
-                          ),
+                              onTap: onTap,
+                            ),
+                          ],
                         ),
                       );
                     },

@@ -9,11 +9,9 @@ import 'package:PiliPlus/models_new/search/search_trending/data.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
-import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:stream_transform/stream_transform.dart';
 
@@ -54,7 +52,7 @@ abstract class DebounceStreamState<T extends StatefulWidget, S> extends State<T>
 
 class BaseSearchController extends GetxController {
   final historyList = List<String>.from(
-    GStorage.historyWord.get('cacheList') ?? [],
+    GStorage.historyWord.get('cacheList') ?? const <String>[],
   ).obs;
 
   late final Rx<LoadingState<SearchTrendingData>> trendingState;
@@ -192,13 +190,6 @@ class SSearchController extends GetxController
       },
     );
     searchFocusNode.requestFocus();
-    if (PlatformUtils.isDesktop) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        controller.selection = TextSelection.collapsed(
-          offset: controller.text.length,
-        );
-      });
-    }
   }
 
   Future<void> queryRecommendList() async {
@@ -231,7 +222,7 @@ class SSearchController extends GetxController
   void onClearHistory() {
     showConfirmDialog(
       context: Get.context!,
-      title: '确定清空搜索历史？',
+      title: const Text('确定清空搜索历史？'),
       onConfirm: () {
         historyList.clear();
         GStorage.historyWord.delete('cacheList');

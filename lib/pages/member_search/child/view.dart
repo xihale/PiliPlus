@@ -1,10 +1,10 @@
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
-import 'package:PiliPlus/common/widgets/video_card/video_card_h.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/member/search_type.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/dynamic_panel.dart';
 import 'package:PiliPlus/pages/member_search/child/controller.dart';
+import 'package:PiliPlus/pages/member_search/child/widgets/search_archive_grpc.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/waterfall.dart';
@@ -71,53 +71,45 @@ class _MemberSearchChildPageState extends State<MemberSearchChildPage>
       Loading() => _buildLoading,
       Success(:final response) =>
         response != null && response.isNotEmpty
-            ? Builder(
-                builder: (context) {
-                  return switch (widget.searchType) {
-                    MemberSearchType.archive => SliverGrid.builder(
-                      gridDelegate: gridDelegate,
-                      itemBuilder: (context, index) {
-                        if (index == response.length - 1) {
-                          _controller.onLoadMore();
-                        }
-                        return VideoCardH(
-                          videoItem: response[index],
-                        );
-                      },
-                      itemCount: response.length,
-                    ),
-                    MemberSearchType.dynamic =>
-                      GlobalData().dynamicsWaterfallFlow
-                          ? SliverWaterfallFlow(
-                              gridDelegate: dynGridDelegate,
-                              delegate: SliverChildBuilderDelegate(
-                                (_, index) {
-                                  if (index == response.length - 1) {
-                                    _controller.onLoadMore();
-                                  }
-                                  return DynamicPanel(item: response[index]);
-                                },
-                                childCount: response.length,
-                              ),
-                            )
-                          : SliverList.builder(
-                              itemBuilder: (context, index) {
-                                if (index == response.length - 1) {
-                                  _controller.onLoadMore();
-                                }
-                                return DynamicPanel(item: response[index]);
-                              },
-                              itemCount: response.length,
-                            ),
-                  };
-                },
-              )
+            ? switch (widget.searchType) {
+                MemberSearchType.archive => SliverGrid.builder(
+                  gridDelegate: gridDelegate,
+                  itemBuilder: (context, index) {
+                    if (index == response.length - 1) {
+                      _controller.onLoadMore();
+                    }
+                    return SearchArchiveGrpc(item: response[index]);
+                  },
+                  itemCount: response.length,
+                ),
+                MemberSearchType.dynamic =>
+                  GlobalData().dynamicsWaterfallFlow
+                      ? SliverWaterfallFlow(
+                          gridDelegate: dynGridDelegate,
+                          delegate: SliverChildBuilderDelegate(
+                            (_, index) => _itemBuilder(response, index),
+                            childCount: response.length,
+                          ),
+                        )
+                      : SliverList.builder(
+                          itemBuilder: (context, index) =>
+                              _itemBuilder(response, index),
+                          itemCount: response.length,
+                        ),
+              }
             : HttpError(onReload: _controller.onReload),
       Error(:final errMsg) => HttpError(
         errMsg: errMsg,
         onReload: _controller.onReload,
       ),
     };
+  }
+
+  Widget _itemBuilder(List list, int index) {
+    if (index == list.length - 1) {
+      _controller.onLoadMore();
+    }
+    return DynamicPanel(item: list[index]);
   }
 
   @override

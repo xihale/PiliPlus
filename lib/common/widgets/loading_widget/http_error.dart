@@ -1,3 +1,5 @@
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -19,31 +21,21 @@ class HttpError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return isSliver
-        ? SliverToBoxAdapter(child: content(context))
-        : SizedBox(width: double.infinity, child: content(context));
-  }
-
-  Widget content(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.center,
+    final child = Column(
+      mainAxisSize: .min,
+      mainAxisAlignment: .center,
+      crossAxisAlignment: .center,
       children: [
         const SizedBox(height: 40),
-        SvgPicture.asset(
-          "assets/images/error.svg",
-          height: 200,
-        ),
+        SvgPicture.asset(Assets.error, height: 200),
         const SizedBox(height: 30),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-          child: SelectableText(
+          padding: const .symmetric(horizontal: 16, vertical: 5),
+          child: SelectionText(
             errMsg ?? '没有数据',
-            textAlign: TextAlign.center,
+            textAlign: .center,
             style: theme.textTheme.titleSmall,
-            scrollPhysics: const NeverScrollableScrollPhysics(),
           ),
         ),
         if (onReload != null)
@@ -63,5 +55,9 @@ class HttpError extends StatelessWidget {
           SizedBox(height: 40 + MediaQuery.viewPaddingOf(context).bottom),
       ],
     );
+
+    return isSliver
+        ? SliverToBoxAdapter(child: child)
+        : SizedBox(width: double.infinity, child: child);
   }
 }

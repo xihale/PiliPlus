@@ -649,14 +649,9 @@ abstract final class Api {
   /// mid
   static const getMemberViewApi = '/x/space/upstat';
 
-  /// 查询某个专栏
-  /// mid
-  /// season_id
-  /// sort_reverse
-  /// page_num
-  /// page_size
-  static const getSeasonDetailApi =
-      '/x/polymer/web-space/seasons_archives_list';
+  static const seasonArchives = '/x/polymer/web-space/seasons_archives_list';
+
+  static const seriesArchives = '/x/series/archives';
 
   /// 获取未读动态数
   static const getUnreadDynamic = '/x/web-interface/dynamic/entrance';
@@ -815,6 +810,8 @@ abstract final class Api {
 
   static const String topicFeed = '/x/polymer/web-dynamic/v1/feed/topic';
 
+  static const String topicFold = '/x/topic/web/details/fold';
+
   static const String spaceOpus = '/x/polymer/web-dynamic/v1/opus/feed/space';
 
   static const String articleList = '/x/article/list/web/articles';
@@ -834,6 +831,10 @@ abstract final class Api {
       '${HttpString.tUrl}/link_setting/v1/link_setting/set_push_ss';
 
   static const String dynReserve = '/x/dynamic/feed/reserve/click';
+
+  static const String spaceReserve = '/x/space/reserve';
+
+  static const String spaceReserveCancel = '/x/space/reserve/cancel';
 
   static const String favPugv = '/pugv/app/web/favorite/page';
 
@@ -999,4 +1000,21 @@ abstract final class Api {
   static const String replySubjectModify = '/x/v2/reply/subject/modify';
 
   static const String videoshot = '/x/player/videoshot';
+
+  static const String liveMedalWall =
+      '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/MedalWall';
+
+  static const String memberGuard =
+      '${HttpString.liveBaseUrl}/xlive/app-ucenter/v1/guard/MainGuardCardAll';
+
+  static const String bubble = '/x/tribee/v1/dyn/all';
+
+  static const String sortFollowTag = '/x/relation/tags/update_sort';
+
+  static const String replyReport = '/x/v2/reply/report';
+
+  static const String dynReaction = '/x/polymer/web-dynamic/v1/detail/reaction';
+
+  static const String liveFeedback =
+      '${HttpString.liveBaseUrl}/xlive/app-interface/v2/index/feedback';
 }

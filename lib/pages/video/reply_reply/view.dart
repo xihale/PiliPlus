@@ -1,12 +1,12 @@
-import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/skeleton/video_reply.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/colored_box_transition.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/sliver/sliver_pinned_header.dart';
 import 'package:PiliPlus/common/widgets/view_safe_area.dart';
 import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
-    show ReplyInfo, Mode;
+    show ReplyInfo;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
@@ -16,6 +16,7 @@ import 'package:PiliPlus/utils/extension/widget_ext.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
+import 'package:fixnum/fixnum.dart' show Int64;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -33,6 +34,7 @@ class VideoReplyReplyPanel extends CommonSlidePage {
     required this.isVideoDetail,
     required this.replyType,
     this.isNested = false,
+    this.upMid,
   });
   final int? id;
   final int oid;
@@ -42,6 +44,7 @@ class VideoReplyReplyPanel extends CommonSlidePage {
   final bool isVideoDetail;
   final int replyType;
   final bool isNested;
+  final Int64? upMid;
 
   @override
   State<VideoReplyReplyPanel> createState() => _VideoReplyReplyPanelState();
@@ -200,17 +203,16 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
                 }
                 return _header(theme, firstFloor);
               }),
-            _sortWidget(theme),
+            _sortWidget(theme.colorScheme),
           ],
-          Obx(() => _buildBody(theme, _controller.loadingState.value)),
+          Obx(
+            () => _buildBody(theme.colorScheme, _controller.loadingState.value),
+          ),
         ],
       ),
     );
     if (widget.isNested) {
-      return ExtendedVisibilityDetector(
-        uniqueKey: Key(_tag),
-        child: child,
-      );
+      return ExtendedVisibilityDetector(uniqueKey: Key(_tag), child: child);
     }
     return child;
   }
@@ -224,7 +226,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             replyLevel: 2,
             needDivider: false,
             onReply: (replyItem) => _controller.onReply(replyItem, index: -1),
-            upMid: _controller.upMid,
+            upMid: widget.upMid ?? _controller.upMid,
             onCheckReply: (item) =>
                 _controller.onCheckReply(item, isManual: true),
           ),
@@ -240,13 +242,13 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
     );
   }
 
-  Widget _sortWidget(ThemeData theme) {
+  Widget _sortWidget(ColorScheme colorScheme) {
     return SliverPinnedHeader(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 2.5, 6, 2.5),
+        padding: const .fromLTRB(12, 2.5, 6, 2.5),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: .spaceBetween,
           children: [
             Obx(
               () {
@@ -260,20 +262,13 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
               },
             ),
             TextButton.icon(
-              style: StyleString.buttonStyle,
+              style: Style.buttonStyle,
               onPressed: _controller.queryBySort,
-              icon: Icon(
-                Icons.sort,
-                size: 16,
-                color: theme.colorScheme.secondary,
-              ),
+              icon: Icon(Icons.sort, size: 16, color: colorScheme.secondary),
               label: Obx(
                 () => Text(
-                  _controller.mode.value == Mode.MAIN_LIST_HOT ? '按热度' : '按时间',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: theme.colorScheme.secondary,
-                  ),
+                  _controller.sortType.value.text!,
+                  style: TextStyle(fontSize: 13, color: colorScheme.secondary),
                 ),
               ),
             ),
@@ -284,7 +279,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
   }
 
   Widget _buildBody(
-    ThemeData theme,
+    ColorScheme colorScheme,
     LoadingState<List<ReplyInfo>?> loadingState,
   ) {
     final jumpIndex = _controller.index.value;
@@ -302,15 +297,13 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             return Container(
               height: 125,
               alignment: Alignment.center,
-              margin: EdgeInsets.only(
-                bottom: MediaQuery.viewPaddingOf(context).bottom,
-              ),
+              margin: .only(bottom: MediaQuery.viewPaddingOf(context).bottom),
               child: Text(
                 _controller.isEnd ? '没有更多了' : '加载中...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
-                  color: theme.colorScheme.outline,
+                  color: colorScheme.outline,
                 ),
               ),
             );
@@ -320,13 +313,10 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel>
             return ColoredBoxTransition(
               color: _colorAnimation ??= _controller.animController.drive(
                 ColorTween(
-                  begin: theme.colorScheme.onInverseSurface,
-                  end: theme.colorScheme.surface,
-                ).chain(
-                  CurveTween(
-                    curve: const Interval(0.8, 1.0), // 前0.8s不变, 后0.2s开始动画
-                  ),
-                ),
+                  begin: colorScheme.onInverseSurface,
+                  end: colorScheme.surface,
+                  // 前0.8s不变, 后0.2s开始动画
+                ).chain(CurveTween(curve: const Interval(0.8, 1.0))),
               ),
               child: child,
             );

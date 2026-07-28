@@ -22,7 +22,7 @@ class PlayUrlModel {
     this.seekType,
     this.dash,
     this.supportFormats,
-    this.lastPlayTime,
+    this._lastPlayTime = 0,
     this.lastPlayCid,
   });
 
@@ -42,7 +42,17 @@ class PlayUrlModel {
   List<Durl>? durl;
   List<FormatItem>? supportFormats;
   Volume? volume;
-  int? lastPlayTime;
+
+  late int _lastPlayTime;
+  int get lastPlayTime => _lastPlayTime;
+  set lastPlayTime(int? value) {
+    if (value != null && value > 0) {
+      _lastPlayTime = value;
+    } else {
+      _lastPlayTime = 0;
+    }
+  }
+
   int? lastPlayCid;
   String? curLanguage;
   Language? language;
@@ -163,19 +173,15 @@ class Dash {
     video = (json['video'] as List?)
         ?.map<VideoItem>((e) => VideoItem.fromJson(e))
         .toList();
-    audio = (json['audio'] as List?)
-        ?.map<AudioItem>((e) => AudioItem.fromJson(e))
-        .toList();
-    if (json['dolby']?['audio'] case List list) {
-      (audio ??= <AudioItem>[]).insertAll(
-        0,
-        list.map((e) => AudioItem.fromJson(e)),
-      );
-    }
-    final flacAudio = json['flac']?['audio'];
-    if (flacAudio != null) {
-      (audio ??= <AudioItem>[]).insert(0, AudioItem.fromJson(flacAudio));
-    }
+    final audio = [
+      if (json['flac']?['audio'] case Map<String, dynamic> flac)
+        AudioItem.fromJson(flac),
+      if (json['dolby']?['audio'] case List list)
+        ...list.map((e) => AudioItem.fromJson(e)),
+      if (json['audio'] case List list)
+        ...list.map((e) => AudioItem.fromJson(e)),
+    ];
+    this.audio = audio.isEmpty ? null : audio;
   }
 }
 
@@ -381,6 +387,11 @@ class Volume {
       i -= measuredI;
       measuredI = 0;
     }
+    num measuredThreshold = this.measuredThreshold;
+    if (measuredThreshold > 0) {
+      measuredThreshold = 0;
+    }
+
     return 'LRA=$lra:I=$i:TP=$tp:offset=$offset:linear=true:measured_I=$measuredI:measured_LRA=$measuredLra:measured_TP=$measuredTp:measured_thresh=$measuredThreshold';
   }
 

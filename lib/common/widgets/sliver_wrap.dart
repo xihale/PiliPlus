@@ -65,11 +65,9 @@ class RenderSliverFixedWrap extends RenderSliverMultiBoxAdaptor {
   RenderSliverFixedWrap({
     required super.childManager,
     required double mainAxisExtent,
-    double spacing = 0.0,
-    double runSpacing = 0.0,
-  }) : _mainAxisExtent = mainAxisExtent,
-       _spacing = spacing,
-       _runSpacing = runSpacing {
+    this._spacing = 0.0,
+    this._runSpacing = 0.0,
+  }) : _mainAxisExtent = mainAxisExtent {
     assert(mainAxisExtent > 0.0 && mainAxisExtent.isFinite);
   }
 
@@ -96,7 +94,6 @@ class RenderSliverFixedWrap extends RenderSliverMultiBoxAdaptor {
   set runSpacing(double value) {
     if (_runSpacing == value) return;
     _runSpacing = value;
-    markRowsDirty();
     markNeedsLayout();
   }
 
@@ -168,20 +165,20 @@ class RenderSliverFixedWrap extends RenderSliverMultiBoxAdaptor {
     }
   }
 
-  bool _buildNextRow(int start, BoxConstraints childConstraints) {
+  bool _buildNextRow(int start, BoxConstraints constraints) {
     final int childCount = childManager.childCount;
 
     if (start >= childCount) {
       return false;
     }
 
-    final crossAxisExtent = constraints.crossAxisExtent;
+    final crossAxisExtent = this.constraints.crossAxisExtent;
 
     final List<double> widths = [];
     int idx = start;
     RenderBox? child;
     for (var totalWidth = -_spacing; idx < childCount; idx++) {
-      child = _getOrCreateChildAtIndex(idx, childConstraints, child);
+      child = _getOrCreateChildAtIndex(idx, constraints, child);
       final childWidth = _childCrossExtent(child);
       totalWidth += childWidth + _spacing;
 
@@ -215,24 +212,20 @@ class RenderSliverFixedWrap extends RenderSliverMultiBoxAdaptor {
     final firstNeededRow = math.max(0, firstCacheOffset ~/ rowHeight);
     final lastNeededRow = math.max(0, lastCacheOffset ~/ rowHeight);
 
+    final childConstraints = constraints.toFixedConstraints(_mainAxisExtent);
+
     if (firstChild == null) {
       if (!addInitialChild()) {
         geometry = SliverGeometry.zero;
         childManager.didFinishLayout();
         return;
       }
-      firstChild!.layout(
-        constraints.toFixedConstraints(_mainAxisExtent),
-        parentUsesSize: true,
-      );
+      firstChild!.layout(childConstraints, parentUsesSize: true);
     }
 
     while (_rows.length <= lastNeededRow) {
       final int startIndex = _rows.isEmpty ? 0 : _rows.last.endIndex + 1;
-      if (!_buildNextRow(
-        startIndex,
-        constraints.toFixedConstraints(_mainAxisExtent),
-      )) {
+      if (!_buildNextRow(startIndex, childConstraints)) {
         break;
       }
     }
@@ -256,11 +249,7 @@ class RenderSliverFixedWrap extends RenderSliverMultiBoxAdaptor {
       final rowStartOffset = r * rowHeight;
       double crossOffset = 0.0;
       for (var i = row.startIndex; i <= row.endIndex; i++) {
-        child = _getOrCreateChildAtIndex(
-          i,
-          constraints.toFixedConstraints(_mainAxisExtent),
-          child,
-        );
+        child = _getOrCreateChildAtIndex(i, childConstraints, child);
         (child.parentData as SliverWrapParentData)
           ..layoutOffset = rowStartOffset
           ..crossAxisOffset = crossOffset;

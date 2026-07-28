@@ -1,10 +1,10 @@
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
 import 'package:PiliPlus/models/search/result.dart';
-import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
-import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_navigation/src/extension_navigation.dart';
 
 class SearchUserItem extends StatelessWidget {
   const SearchUserItem({
@@ -29,10 +29,11 @@ class SearchUserItem extends StatelessWidget {
           children: [
             const SizedBox(width: 15),
             PendantAvatar(
-              avatar: item.upic,
+              item.upic,
               size: 42,
-              isVip: false,
               officialType: item.officialVerify?.type,
+              liveBottom: -5,
+              liveFontSize: 11,
               roomId: item.isLive == 1 ? item.roomId : null,
             ),
             const SizedBox(width: 10),
@@ -50,14 +51,10 @@ class SearchUserItem extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Image.asset(
-                      Utils.levelName(
-                        item.level!,
-                        isSeniorMember: item.isSeniorMember == 1,
-                      ),
+                    BiliUtils.levelPicture(
+                      item.level!,
+                      isSeniorMember: item.isSeniorMember == 1,
                       height: 11,
-                      cacheHeight: 11.cacheSize(context),
-                      semanticLabel: '等级${item.level}',
                     ),
                   ],
                 ),

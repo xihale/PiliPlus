@@ -4,15 +4,18 @@ import 'package:PiliPlus/models_new/live/live_area_list/area_item.dart';
 import 'package:PiliPlus/models_new/live/live_area_list/area_list.dart';
 import 'package:PiliPlus/pages/common/common_list_controller.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:flutter/material.dart' show TabController;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
-class LiveAreaController
-    extends CommonListController<List<AreaList>?, AreaList> {
+class LiveAreaController extends CommonListController<List<AreaList>?, AreaList>
+    with GetSingleTickerProviderStateMixin {
   late final isLogin = Accounts.main.isLogin;
 
   late final isEditing = false.obs;
   late final favInfo = {};
+
+  TabController? tabController;
 
   @override
   void onInit() {
@@ -29,6 +32,16 @@ class LiveAreaController
       queryFavTags();
     }
     return super.onRefresh();
+  }
+
+  @override
+  bool customHandleResponse(bool isRefresh, Success<List<AreaList>?> response) {
+    assert(tabController == null);
+    final length = response.response?.length;
+    if (length != null && length != 0) {
+      tabController = TabController(length: length, vsync: this);
+    }
+    return super.customHandleResponse(isRefresh, response);
   }
 
   Rx<LoadingState<List<AreaItem>>> favState =
@@ -48,13 +61,13 @@ class LiveAreaController
         ids: response.map((e) => e.id).join(','),
       );
       if (res.isSuccess) {
-        isEditing.value = !isEditing.value;
+        isEditing.toggle();
         SmartDialog.showToast('设置成功');
       } else {
         res.toast();
       }
     } else {
-      isEditing.value = !isEditing.value;
+      isEditing.toggle();
     }
   }
 
@@ -62,7 +75,14 @@ class LiveAreaController
     if (isEditing.value) {
       setFavTag();
     } else {
-      isEditing.value = !isEditing.value;
+      isEditing.toggle();
     }
+  }
+
+  @override
+  void onClose() {
+    tabController?.dispose();
+    tabController = null;
+    super.onClose();
   }
 }

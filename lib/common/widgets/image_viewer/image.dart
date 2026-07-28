@@ -5,7 +5,7 @@
 import 'dart:io' show File;
 import 'dart:math' as math;
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/gesture/image_horizontal_drag_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/viewer.dart';
 import 'package:flutter/foundation.dart';
@@ -390,9 +390,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
   void didChangeDependencies() {
     _resolveImage();
 
-    _isPaused =
-        !TickerMode.valuesOf(context).enabled ||
-        (MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+    _isPaused = !TickerMode.valuesOf(context).enabled;
 
     if (_isPaused && _frameNumber != null) {
       _stopListeningToStream(keepStreamAlive: true);
@@ -603,7 +601,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       final imgHeight = _imageInfo!.image.height.toDouble();
       final imgRatio = imgHeight / imgWidth;
       isLongPic =
-          imgRatio > StyleString.imgMaxRatio &&
+          imgRatio > Style.imgMaxRatio &&
           imgHeight > widget.containerSize.height;
       if (isLongPic) {
         final compatWidth = math.min(650.0, widget.containerSize.width);

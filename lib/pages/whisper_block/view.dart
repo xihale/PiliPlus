@@ -1,3 +1,4 @@
+import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
 import 'package:PiliPlus/grpc/bilibili/app/im/v1.pb.dart'
@@ -37,7 +38,7 @@ class _WhisperBlockPageState extends State<WhisperBlockPage> {
     LoadingState<List<KeywordBlockingItem>?> loadingState,
   ) {
     return switch (loadingState) {
-      Loading() => loadingWidget,
+      Loading() => m3eLoading,
       Success(:final response) =>
         response != null && response.isNotEmpty
             ? Column(
@@ -81,8 +82,8 @@ class _WhisperBlockPageState extends State<WhisperBlockPage> {
                                 onTap: (keyword) {
                                   showConfirmDialog(
                                     context: context,
-                                    title: '删除屏蔽词？',
-                                    content: '该屏蔽词将不再生效',
+                                    title: const Text('删除屏蔽词？'),
+                                    content: const Text('该屏蔽词将不再生效'),
                                     onConfirm: () => _controller.onRemove(e),
                                   );
                                 },
@@ -114,7 +115,7 @@ class _WhisperBlockPageState extends State<WhisperBlockPage> {
                   spacing: 6,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SvgPicture.asset("assets/images/error.svg", height: 156),
+                    SvgPicture.asset(Assets.error, height: 156),
                     const Text(
                       '还未添加屏蔽词',
                       style: TextStyle(

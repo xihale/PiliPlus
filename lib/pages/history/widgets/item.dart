@@ -1,6 +1,5 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
-import 'package:PiliPlus/common/widgets/flutter/layout_builder.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/progress_bar/video_progress_indicator.dart';
 import 'package:PiliPlus/common/widgets/select_mask.dart';
@@ -8,13 +7,14 @@ import 'package:PiliPlus/http/search.dart';
 import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/models/common/badge_type.dart';
 import 'package:PiliPlus/models_new/history/list.dart';
+import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
 import 'package:PiliPlus/pages/common/multi_select/base.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:flutter/material.dart' hide LayoutBuilder;
+import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -69,30 +69,43 @@ class HistoryItem extends StatelessWidget {
                     SmartDialog.showToast('直播未开播');
                   }
                 } else if (business == 'pgc') {
-                  PageUtils.viewPgc(epId: item.history.epid);
+                  PageUtils.viewPgc(
+                    epId: item.history.epid,
+                    progress: item.playbackProgress,
+                  );
                 } else if (business == 'cheese') {
                   if (item.uri?.isNotEmpty == true) {
                     PageUtils.viewPgcFromUri(
                       item.uri!,
                       isPgc: false,
                       aid: item.history.oid,
+                      progress: item.playbackProgress,
                     );
                   }
                 } else {
-                  int? cid =
-                      item.history.cid ??
-                      await SearchHttp.ab2c(
-                        aid: aid,
-                        bvid: bvid,
-                        part: item.history.page,
-                      );
+                  int? cid = item.history.cid;
+                  Dimension? dimension;
+                  if (cid == null) {
+                    if (await SearchHttp.ab2cWithDimension(
+                          aid: aid,
+                          bvid: bvid,
+                          part: item.history.page,
+                        )
+                        case final res?) {
+                      cid = res.cid;
+                      dimension = res.dimension;
+                    }
+                  }
                   if (cid != null) {
+                    // TODO: dimension
                     PageUtils.toVideoPage(
                       aid: aid,
                       bvid: bvid,
                       cid: cid,
                       cover: item.cover,
                       title: item.title,
+                      dimension: dimension,
+                      progress: item.playbackProgress,
                     );
                   }
                 }
@@ -104,14 +117,14 @@ class HistoryItem extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: StyleString.safeSpace,
+                horizontal: Style.safeSpace,
                 vertical: 5,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AspectRatio(
-                    aspectRatio: StyleString.aspectRatio,
+                    aspectRatio: Style.aspectRatio,
                     child: LayoutBuilder(
                       builder: (context, boxConstraints) {
                         double maxWidth = boxConstraints.maxWidth;
@@ -168,7 +181,10 @@ class HistoryItem extends StatelessWidget {
                                 ),
                               ),
                             Positioned.fill(
-                              child: selectMask(theme, item.checked),
+                              child: selectMask(
+                                theme.colorScheme,
+                                item.checked,
+                              ),
                             ),
                           ],
                         );

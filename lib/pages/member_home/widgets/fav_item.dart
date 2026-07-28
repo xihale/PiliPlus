@@ -1,4 +1,4 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/image/image_save.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/models_new/space/space_fav/list.dart';
@@ -34,7 +34,7 @@ class MemberFavItem extends StatelessWidget {
         onSecondaryTap: PlatformUtils.isMobile ? null : onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: StyleString.safeSpace,
+            horizontal: Style.safeSpace,
             vertical: 5,
           ),
           child: Row(
@@ -42,8 +42,8 @@ class MemberFavItem extends StatelessWidget {
             children: [
               NetworkImgLayer(
                 src: item.cover,
-                width: 140.8,
-                height: 88,
+                width: 160,
+                height: 100,
               ),
               const SizedBox(width: 10),
               Expanded(

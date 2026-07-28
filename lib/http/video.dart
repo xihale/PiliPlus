@@ -37,6 +37,7 @@ import 'package:PiliPlus/utils/recommend_filter.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/subtitle_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:PiliPlus/utils/wbi_sign.dart';
 import 'package:dio/dio.dart';
@@ -49,7 +50,7 @@ abstract final class VideoHttp {
   static bool enableFilter = zoneRegExp.pattern.isNotEmpty;
 
   // 首页推荐视频
-  static Future<LoadingState<List<RecVideoItemModel>>> rcmdVideoList({
+  static Future<LoadingState<List<RcmdVideoItemModel>>> rcmdVideoList({
     required int ps,
     required int freshIdx,
   }) async {
@@ -66,13 +67,13 @@ abstract final class VideoHttp {
       }),
     );
     if (res.data['code'] == 0) {
-      List<RecVideoItemModel> list = <RecVideoItemModel>[];
+      List<RcmdVideoItemModel> list = <RcmdVideoItemModel>[];
       for (final i in res.data['data']['item']) {
         //过滤掉live与ad，以及拉黑用户
         if (i['goto'] == 'av' &&
             (i['owner'] != null &&
                 !GlobalData().blackMids.contains(i['owner']['mid']))) {
-          RecVideoItemModel videoItem = RecVideoItemModel.fromJson(i);
+          RcmdVideoItemModel videoItem = RcmdVideoItemModel.fromJson(i);
           if (!RecommendFilter.filter(videoItem)) {
             list.add(videoItem);
           }
@@ -85,7 +86,7 @@ abstract final class VideoHttp {
   }
 
   // 添加额外的loginState变量模拟未登录状态
-  static Future<LoadingState<List<RecVideoItemAppModel>>> rcmdVideoListApp({
+  static Future<LoadingState<List<RcmdVideoItemAppModel>>> rcmdVideoListApp({
     required int freshIdx,
   }) async {
     final params = {
@@ -139,7 +140,7 @@ abstract final class VideoHttp {
       ),
     );
     if (res.data['code'] == 0) {
-      List<RecVideoItemAppModel> list = <RecVideoItemAppModel>[];
+      List<RcmdVideoItemAppModel> list = <RcmdVideoItemAppModel>[];
       for (final i in res.data['data']['items']) {
         // 屏蔽推广和拉黑用户
         if (i['card_goto'] != 'ad_av' &&
@@ -152,7 +153,7 @@ abstract final class VideoHttp {
               zoneRegExp.hasMatch(i['args']['tname'])) {
             continue;
           }
-          RecVideoItemAppModel videoItem = RecVideoItemAppModel.fromJson(i);
+          RcmdVideoItemAppModel videoItem = RcmdVideoItemAppModel.fromJson(i);
           if (!RecommendFilter.filter(videoItem)) {
             list.add(videoItem);
           }
@@ -208,7 +209,10 @@ abstract final class VideoHttp {
     required bool tryLook,
     required VideoType videoType,
     String? language,
+    bool voiceBalance = false,
   }) async {
+    final dmImgStr = Utils.base64EncodeRandomString(16, 64);
+    final dmCoverImgStr = Utils.base64EncodeRandomString(32, 128);
     final params = await WbiSign.makSign({
       'avid': ?avid,
       'bvid': ?bvid,
@@ -220,12 +224,16 @@ abstract final class VideoHttp {
       'fnval': 4048,
       'fourk': 1,
       'fnver': 0,
-      'voice_balance': 1,
+      'voice_balance': voiceBalance ? 1 : 0,
       'gaia_source': 'pre-load',
       'isGaiaAvoided': true,
       'web_location': 1315873,
       // 免登录查看1080p
       if (tryLook) 'try_look': 1,
+      'dm_img_list': '[]',
+      'dm_img_str': dmImgStr,
+      'dm_cover_img_str': dmCoverImgStr,
+      'dm_img_inter': '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}',
       'cur_language': ?language,
     });
 
@@ -235,25 +243,24 @@ abstract final class VideoHttp {
       if (res.data['code'] == 0) {
         late PlayUrlModel data;
         switch (videoType) {
-          case VideoType.ugc:
+          case .ugc:
             data = PlayUrlModel.fromJson(res.data['data']);
-            break;
-          case VideoType.pugv:
-            final result = res.data['data'];
-            data = PlayUrlModel.fromJson(result)
-              ..lastPlayTime =
-                  result?['play_view_business_info']?['user_status']?['watch_progress']?['current_watch_progress'];
-            break;
-          case VideoType.pgc:
+
+          case .pgc:
             final result = res.data['result'];
             data = PlayUrlModel.fromJson(result['video_info'])
               ..lastPlayTime =
-                  result?['play_view_business_info']?['user_status']?['watch_progress']?['current_watch_progress'];
-            break;
+                  result['play_view_business_info']?['user_status']?['watch_progress']?['current_watch_progress'];
+
+          case .pugv:
+            final result = res.data['data'];
+            data = PlayUrlModel.fromJson(result)
+              ..lastPlayTime =
+                  result['play_view_business_info']?['user_status']?['watch_progress']?['current_watch_progress'];
         }
         return Success(data);
-      } else if (epid != null && videoType == VideoType.ugc) {
-        return videoUrl(
+      } else if (epid != null && videoType == .ugc) {
+        return await videoUrl(
           avid: avid,
           bvid: bvid,
           cid: cid,
@@ -261,7 +268,7 @@ abstract final class VideoHttp {
           epid: epid,
           seasonId: seasonId,
           tryLook: tryLook,
-          videoType: VideoType.pgc,
+          videoType: .pgc,
         );
       }
       return Error(_parseVideoErr(res.data['code'], res.data['message']));
@@ -345,7 +352,7 @@ abstract final class VideoHttp {
   }
 
   // 投币
-  static Future<LoadingState<Null>> coinVideo({
+  static Future<LoadingState<void>> coinVideo({
     required String bvid,
     required int multiply,
     int selectLike = 0,
@@ -443,7 +450,7 @@ abstract final class VideoHttp {
   }
 
   // （取消）点踩
-  static Future<LoadingState<Null>> dislikeVideo({
+  static Future<LoadingState<void>> dislikeVideo({
     required String bvid,
     required bool type,
   }) async {
@@ -466,7 +473,7 @@ abstract final class VideoHttp {
   }
 
   // 推送不感兴趣反馈
-  static Future<LoadingState<Null>> feedDislike({
+  static Future<LoadingState<void>> feedDislike({
     required String goto,
     required int id,
     int? reasonId,
@@ -495,7 +502,7 @@ abstract final class VideoHttp {
   }
 
   // 推送不感兴趣取消
-  static Future<LoadingState<Null>> feedDislikeCancel({
+  static Future<LoadingState<void>> feedDislikeCancel({
     required String goto,
     required int id,
     int? reasonId,
@@ -564,7 +571,6 @@ abstract final class VideoHttp {
           replyInfo.id.toString(),
           (replyInfo.deepCopy()
                 ..unknownFields.clear()
-                ..clearMemberV2()
                 ..clearTrackInfo())
               .writeToBuffer(),
         );
@@ -578,7 +584,7 @@ abstract final class VideoHttp {
     }
   }
 
-  static Future<LoadingState<Null>> replyDel({
+  static Future<LoadingState<void>> replyDel({
     required int type, //replyType
     required int oid,
     required int rpid,
@@ -602,7 +608,7 @@ abstract final class VideoHttp {
   }
 
   // 操作用户关系
-  static Future<LoadingState<Null>> relationMod({
+  static Future<LoadingState<void>> relationMod({
     required int mid,
     required int act,
     required int reSrc,
@@ -829,33 +835,20 @@ abstract final class VideoHttp {
     }
   }
 
-  static String _subtitleTimecode(num seconds) {
-    int h = seconds ~/ 3600;
-    seconds %= 3600;
-    int m = seconds ~/ 60;
-    seconds %= 60;
-    String sms = seconds.toStringAsFixed(3).padLeft(6, '0');
-    return h == 0
-        ? "${m.toString().padLeft(2, '0')}:$sms"
-        : "${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:$sms";
-  }
-
-  static String processList(List list) {
-    final sb = StringBuffer('WEBVTT\n\n')
-      ..writeAll(
-        list.map(
-          (item) =>
-              '${item?['sid'] ?? 0}\n${_subtitleTimecode(item['from'])} --> ${_subtitleTimecode(item['to'])}\n${item['content'].trim()}',
-        ),
-        '\n\n',
-      );
-    return sb.toString();
-  }
-
-  static Future<String?> vttSubtitles(String subtitleUrl) async {
+  static Future<String?> vttSubtitles(
+    String subtitleUrl, {
+    SubtitleFormat format = .vtt,
+  }) async {
     final res = await Request().get("https:$subtitleUrl");
     if (res.data?['body'] case List list) {
-      return compute<List, String>(processList, list);
+      switch (format) {
+        case .json:
+          throw UnimplementedError();
+        case .vtt:
+          return compute<List, String>(SubtitleUtils.json2Vtt, list);
+        case .srt:
+          return compute<List, String>(SubtitleUtils.json2Srt, list);
+      }
     }
     return null;
   }

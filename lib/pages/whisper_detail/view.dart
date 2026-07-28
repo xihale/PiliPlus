@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io' show File;
 
+import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/widgets/dialog/report.dart';
 import 'package:PiliPlus/common/widgets/flutter/chat_list_view.dart';
 import 'package:PiliPlus/common/widgets/flutter/text_field/text_field.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
+import 'package:PiliPlus/common/widgets/scroll_physics.dart'
+    show platformAlwaysClampingPhysics;
 import 'package:PiliPlus/grpc/bilibili/im/type.pb.dart' show Msg;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/msg.dart';
@@ -92,7 +95,7 @@ class _WhisperDetailPageState
               if (_whisperDetailController.isLive) ...[
                 const SizedBox(width: 10),
                 Image.asset(
-                  'assets/images/live/live.gif',
+                  Assets.livingRect,
                   height: 16,
                   cacheHeight: 16.cacheSize(context),
                   filterQuality: FilterQuality.low,
@@ -151,15 +154,13 @@ class _WhisperDetailPageState
 
   Widget _buildBody(LoadingState<List<Msg>?> loadingState) {
     return switch (loadingState) {
-      Loading() => loadingWidget,
+      Loading() => m3eLoading,
       Success(:final response) =>
         response != null && response.isNotEmpty
             ? ChatListView.separated(
                 itemCount: response.length,
                 padding: const .all(kChatListPadding),
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: ClampingScrollPhysics(),
-                ),
+                physics: platformAlwaysClampingPhysics,
                 controller: _whisperDetailController.scrollController,
                 itemBuilder: (context, int index) {
                   if (index == response.length - 1) {
@@ -343,9 +344,10 @@ class _WhisperDetailPageState
                     );
                   } else {
                     try {
-                      final XFile? pickedFile = await imagePicker.pickImage(
+                      final pickedFile = await imagePicker.pickImage(
                         source: ImageSource.gallery,
                         imageQuality: 100,
+                        requestFullMetadata: false,
                       );
                       if (pickedFile != null) {
                         final path = pickedFile.path;

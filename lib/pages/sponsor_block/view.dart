@@ -7,6 +7,7 @@ import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/models_new/sponsor_block/user_info.dart';
 import 'package:PiliPlus/pages/setting/slide_color_picker.dart';
+import 'package:PiliPlus/utils/filtering_text.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -17,7 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class SponsorBlockPage extends StatefulWidget {
@@ -82,15 +83,11 @@ class _SponsorBlockPageState extends State<SponsorBlockPage> {
             builder: (_) => AlertDialog(
               title: Text('最短片段时长', style: titleStyle),
               content: TextFormField(
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
+                keyboardType: const .numberWithOptions(decimal: true),
                 controller: _textController,
                 autofocus: true,
                 decoration: const InputDecoration(suffixText: 's'),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[\d\.]+')),
-                ],
+                inputFormatters: FilteringText.decimal,
               ),
               actions: [
                 TextButton(

@@ -7,9 +7,10 @@ import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
 import 'package:PiliPlus/common/widgets/marquee.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
+import 'package:PiliPlus/common/widgets/sliver/sliver_to_box_adapter.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/music.dart';
-import 'package:PiliPlus/models/common/badge_type.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models_new/music/bgm_detail.dart';
@@ -17,6 +18,7 @@ import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
 import 'package:PiliPlus/pages/music/controller.dart';
 import 'package:PiliPlus/pages/music/video/view.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
@@ -25,6 +27,7 @@ import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -51,8 +54,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
+    final child = Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: _buildAppBar(),
       body: Padding(
@@ -60,11 +62,12 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
         child: isPortrait
             ? refreshIndicator(
                 onRefresh: controller.onRefresh,
-                child: _buildBody(theme),
+                child: _buildBody(),
               )
-            : _buildBody(theme),
+            : _buildBody(),
       ),
     );
+    return fabAnimWrapper(child: child);
   }
 
   PreferredSizeWidget _buildAppBar() => AppBar(
@@ -106,7 +109,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
           ],
   );
 
-  Widget _buildBody(ThemeData theme) => Obx(() {
+  Widget _buildBody() => Obx(() {
     switch (controller.infoState.value) {
       case Success(:final response):
         double padding = max(maxWidth / 2 - Grid.smallCardWidth, 0);
@@ -115,17 +118,18 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
           child = Padding(
             padding: EdgeInsets.symmetric(horizontal: padding),
             child: CustomScrollView(
-              controller: scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(
-                  child: _buildCard(theme, response, maxWidth),
+                SliverToBoxWithOffsetAdapter(
+                  offset: 45,
+                  onVisibilityChanged: controller.showTitle.call,
+                  child: _buildCard(response, maxWidth),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildChart(theme, response, maxWidth),
+                  child: _buildChart(response, maxWidth),
                 ),
-                buildReplyHeader(theme),
-                Obx(() => replyList(theme, controller.loadingState.value)),
+                buildReplyHeader(),
+                Obx(() => replyList(controller.loadingState.value)),
               ],
             ),
           );
@@ -141,7 +145,6 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
               Expanded(
                 flex: flex,
                 child: CustomScrollView(
-                  controller: scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     SliverPadding(
@@ -149,7 +152,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                         left: padding,
                       ),
                       sliver: SliverToBoxAdapter(
-                        child: _buildCard(theme, response, leftWidth),
+                        child: _buildCard(response, leftWidth),
                       ),
                     ),
                     SliverPadding(
@@ -158,7 +161,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                         bottom: this.padding.bottom + 100,
                       ),
                       sliver: SliverToBoxAdapter(
-                        child: _buildChart(theme, response, leftWidth),
+                        child: _buildChart(response, leftWidth),
                       ),
                     ),
                   ],
@@ -174,13 +177,11 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                     body: refreshIndicator(
                       onRefresh: controller.onRefresh,
                       child: CustomScrollView(
-                        controller: scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
-                          buildReplyHeader(theme),
+                          buildReplyHeader(),
                           Obx(
-                            () =>
-                                replyList(theme, controller.loadingState.value),
+                            () => replyList(controller.loadingState.value),
                           ),
                         ],
                       ),
@@ -195,7 +196,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
           clipBehavior: Clip.none,
           children: [
             child,
-            _buildBottom(theme, response),
+            _buildBottom(response),
           ],
         );
       default:
@@ -203,8 +204,25 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
     }
   });
 
-  Widget _buildBottom(ThemeData theme, MusicDetail item) {
+  Widget _buildBottom(MusicDetail item) {
+    if (!controller.showDynActionBar) {
+      return Positioned(
+        right: kFloatingActionButtonMargin,
+        bottom: 0,
+        child: SlideTransition(
+          position: fabAnimation,
+          child: fabButton,
+        ),
+      );
+    }
+
+    final primary = theme.colorScheme.primary;
     final outline = theme.colorScheme.outline;
+    final style = TextButton.styleFrom(
+      tapTargetSize: .padded,
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      foregroundColor: outline,
+    );
 
     Widget textIconButton({
       required IconData icon,
@@ -214,7 +232,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
       required VoidCallback onPressed,
       IconData? activatedIcon,
     }) {
-      final color = status ? theme.colorScheme.primary : outline;
+      final color = status ? primary : outline;
       return TextButton.icon(
         onPressed: onPressed,
         icon: Icon(
@@ -222,11 +240,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
           size: 16,
           color: color,
         ),
-        style: TextButton.styleFrom(
-          tapTargetSize: .padded,
-          padding: const EdgeInsets.symmetric(horizontal: 15),
-          foregroundColor: outline,
-        ),
+        style: style,
         label: Text(
           count != null ? NumUtils.numFormat(count) : text,
           style: TextStyle(color: color),
@@ -239,116 +253,105 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
       right: 0,
       bottom: 0,
       child: SlideTransition(
-        position: fabAnim,
-        child: controller.showDynActionBar
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      right: kFloatingActionButtonMargin,
-                      bottom: kFloatingActionButtonMargin,
+        position: fabAnimation,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(
+                right: kFloatingActionButtonMargin,
+                bottom: kFloatingActionButtonMargin,
+              ),
+              child: replyButton,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: theme.colorScheme.outline.withValues(
+                      alpha: 0.08,
                     ),
-                    child: replyButton,
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      border: Border(
-                        top: BorderSide(
-                          color: theme.colorScheme.outline.withValues(
-                            alpha: 0.08,
-                          ),
-                        ),
-                      ),
+                ),
+              ),
+              padding: EdgeInsets.only(bottom: padding.bottom),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  // TODO
+                  // Expanded(
+                  //   child: textIconButton(
+                  //     icon: FontAwesomeIcons.shareFromSquare,
+                  //     text: '转发',
+                  //     count: item.musicShares,
+                  //     onPressed: () {
+                  //       final data = controller.infoState.value.dataOrNull;
+                  //       if (data != null) {
+                  //         showModalBottomSheet(
+                  //           context: context,
+                  //           isScrollControlled: true,
+                  //           useSafeArea: true,
+                  //           builder: (context) => RepostPanel(
+                  //             rid: controller.oid,
+                  //             dynType: null,
+                  //             pic: data.mvCover,
+                  //             title: data.musicTitle,
+                  //           ),
+                  //         );
+                  //       }
+                  //     },
+                  //   ),
+                  // ),
+                  Expanded(
+                    child: textIconButton(
+                      icon: CustomIcons.share_node,
+                      text: '分享',
+                      onPressed: () =>
+                          ShareUtils.shareText(controller.shareUrl),
                     ),
-                    padding: EdgeInsets.only(bottom: padding.bottom),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        // TODO
-                        // Expanded(
-                        //   child: textIconButton(
-                        //     icon: FontAwesomeIcons.shareFromSquare,
-                        //     text: '转发',
-                        //     count: item.musicShares,
-                        //     onPressed: () {
-                        //       final data = controller.infoState.value.dataOrNull;
-                        //       if (data != null) {
-                        //         showModalBottomSheet(
-                        //           context: context,
-                        //           isScrollControlled: true,
-                        //           useSafeArea: true,
-                        //           builder: (context) => RepostPanel(
-                        //             rid: controller.oid,
-                        //             dynType: null,
-                        //             pic: data.mvCover,
-                        //             title: data.musicTitle,
-                        //           ),
-                        //         );
-                        //       }
-                        //     },
-                        //   ),
-                        // ),
-                        Expanded(
-                          child: textIconButton(
-                            icon: CustomIcons.share_node,
-                            text: '分享',
-                            onPressed: () =>
-                                Utils.shareText(controller.shareUrl),
-                          ),
-                        ),
-                        Expanded(
-                          child: Builder(
-                            builder: (context) => textIconButton(
-                              icon: FontAwesomeIcons.thumbsUp,
-                              activatedIcon: FontAwesomeIcons.solidThumbsUp,
-                              text: '点赞',
-                              count: item.wishCount,
-                              status: item.wishListen ?? false,
-                              onPressed: () async {
-                                if (!Accounts.main.isLogin) {
-                                  SmartDialog.showToast('请先登录');
-                                  return;
-                                }
-                                final hasLike = item.wishListen ?? false;
-                                final res = await MusicHttp.wishUpdate(
-                                  controller.musicId,
-                                  hasLike,
-                                );
-                                if (res.isSuccess) {
-                                  if (hasLike) {
-                                    item.wishCount--;
-                                  } else {
-                                    item.wishCount++;
-                                  }
-                                  item.wishListen = !hasLike;
-                                  if (context.mounted) {
-                                    (context as Element).markNeedsBuild();
-                                  }
-                                } else {
-                                  res.toast();
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
+                  ),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) => textIconButton(
+                        icon: FontAwesomeIcons.thumbsUp,
+                        activatedIcon: FontAwesomeIcons.solidThumbsUp,
+                        text: '点赞',
+                        count: item.wishCount,
+                        status: item.wishListen ?? false,
+                        onPressed: () async {
+                          if (!Accounts.main.isLogin) {
+                            SmartDialog.showToast('请先登录');
+                            return;
+                          }
+                          final hasLike = item.wishListen ?? false;
+                          final res = await MusicHttp.wishUpdate(
+                            controller.musicId,
+                            hasLike,
+                          );
+                          if (res.isSuccess) {
+                            if (hasLike) {
+                              item.wishCount--;
+                            } else {
+                              item.wishCount++;
+                            }
+                            item.wishListen = !hasLike;
+                            if (context.mounted) {
+                              (context as Element).markNeedsBuild();
+                            }
+                          } else {
+                            res.toast();
+                          }
+                        },
+                      ),
                     ),
                   ),
                 ],
-              )
-            : Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: kFloatingActionButtonMargin,
-                    bottom: padding.bottom + kFloatingActionButtonMargin,
-                  ),
-                  child: replyButton,
-                ),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -384,8 +387,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
 
   Widget _buildRank(
     int? rank,
-    String name,
-    ThemeData theme, [
+    String name, [
     VoidCallback? onTap,
   ]) {
     final outline = theme.colorScheme.outline;
@@ -421,7 +423,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
           );
   }
 
-  Widget _buildCard(ThemeData theme, MusicDetail item, double maxWidth) {
+  Widget _buildCard(MusicDetail item, double maxWidth) {
     final textTheme = theme.textTheme;
     return SizedBox(
       width: maxWidth,
@@ -485,35 +487,35 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                         Wrap(
                           spacing: 16,
                           children: [
-                            if (!item.musicRank.isNullOrEmpty)
-                              PBadge(
-                                text: item.musicRank,
-                                type: PBadgeType.secondary,
-                                isStack: false,
-                                fontSize: 11,
-                              ),
-                            if (item.mvCid != null && item.mvCid != 0)
+                            if (item.achievement.isNotEmpty)
+                              for (var i in item.achievement)
+                                if (i.isNotEmpty)
+                                  PBadge(
+                                    text: i,
+                                    type: .secondary,
+                                    isStack: false,
+                                    fontSize: 11,
+                                  ),
+                            if (item.mvCid != 0)
                               GestureDetector(
                                 onTap: () => PageUtils.toVideoPage(
                                   bvid: item.mvBvid,
-                                  cid: item.mvCid!,
+                                  cid: item.mvCid,
                                   aid: item.mvAid,
                                 ),
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
-                                    borderRadius: const BorderRadius.all(
-                                      Radius.circular(4),
-                                    ),
+                                    borderRadius: const .all(.circular(4)),
                                     color: theme.colorScheme.secondaryContainer
                                         .withValues(alpha: 0.5),
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(
+                                    padding: const .symmetric(
                                       vertical: 3,
                                       horizontal: 4,
                                     ),
                                     child: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisSize: .min,
                                       children: [
                                         Icon(
                                           Icons.play_circle_outline,
@@ -552,7 +554,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                 ],
               ),
               const SizedBox(height: 10),
-              SelectableText(
+              SelectionText(
                 [
                   if (!(item.originArtist ?? item.originArtistList)
                       .isNullOrEmpty)
@@ -566,12 +568,11 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('热歌榜排名'),
-                  _buildRank(item.hotSongHeat?.lastHeat, '热度', theme),
-                  _buildRank(item.listenPv, '总播放量', theme),
+                  _buildRank(item.hotSongHeat?.lastHeat, '热度'),
+                  _buildRank(item.listenPv, '总播放量'),
                   _buildRank(
                     item.musicRelation,
                     '使用稿件量',
-                    theme,
                     () => Get.to(
                       const MusicRecommendPage(),
                       arguments: (id: controller.musicId, item: item),
@@ -586,7 +587,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
     );
   }
 
-  Widget? _buildChart(ThemeData theme, MusicDetail item, double maxWidth) {
+  Widget? _buildChart(MusicDetail item, double maxWidth) {
     final heat = item.hotSongHeat?.songHeat;
     if (heat == null || heat.isEmpty) return null;
     final colorScheme = theme.colorScheme;
@@ -688,16 +689,13 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
     );
   }
 
-  Future<void> _searchMusic(MusicDetail item) async {
-    final res =
-        Platform.isAndroid &&
-        (await Utils.channel.invokeMethod<bool>('music', {
-              'title': item.musicTitle,
-              'artist': item.originArtist ?? item.originArtistList,
-              'album': item.album,
-            }) ??
-            false);
-    if (!res) {
+  void _searchMusic(MusicDetail item) {
+    if (!Platform.isAndroid ||
+        !PiliAndroidHelper.openMusic(
+          item.musicTitle!,
+          item.originArtist ?? item.originArtistList,
+          item.album,
+        )) {
       Utils.copyText(item.musicTitle!);
     }
   }

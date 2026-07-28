@@ -1,6 +1,7 @@
 import 'dart:math';
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/flutter/page/tabs.dart';
@@ -261,15 +262,15 @@ class _EpisodePanelState extends State<EpisodePanel>
       }
       return offset + 7;
     } else {
-      return index * 100 + 7;
+      return index * 112 + 7;
     }
   }
 
   double _calcItemHeight(ugc.BaseEpisodeItem episode) {
     if (episode is ugc.EpisodeItem && episode.pages!.length > 1) {
-      return 145; // 98 + 2 + 10 + 35
+      return 167; // 110 + 2 + 10 + 45
     }
-    return 100;
+    return 112;
   }
 
   Widget _buildBody(
@@ -279,7 +280,7 @@ class _EpisodePanelState extends State<EpisodePanel>
   ) {
     final isCurrTab = tabIndex == widget.initialTabIndex;
     return KeepAliveWrapper(
-      builder: (context) => CustomScrollView(
+      child: CustomScrollView(
         reverse: _isReversed[tabIndex],
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _itemScrollController[tabIndex],
@@ -310,14 +311,14 @@ class _EpisodePanelState extends State<EpisodePanel>
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            episodeItem, // 98
+                            episodeItem, // 110
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 5,
                               ), // 10
                               child: PagesPanel(
-                                // 35
+                                // 45
                                 list: isCurrTab && isCurrItem
                                     ? null
                                     : episode.pages,
@@ -351,7 +352,7 @@ class _EpisodePanelState extends State<EpisodePanel>
                         isCurrentIndex: isCurrItem,
                       );
                     },
-                    itemExtent: 100,
+                    itemExtent: 112,
                   ),
           ),
         ],
@@ -427,12 +428,15 @@ class _EpisodePanelState extends State<EpisodePanel>
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: SizedBox(
-        height: 98,
+        height: 110,
         child: Material(
-          type: MaterialType.transparency,
+          type: .transparency,
           child: InkWell(
             onTap: () {
-              if (episode.badge == "会员" && vipStatus != 1) {
+              if (isCurrentIndex) return;
+              if (episode.badge == "会员" &&
+                  Accounts.mainEqVideo &&
+                  vipStatus != 1) {
                 SmartDialog.showToast('需要大会员');
                 // return;
               }
@@ -459,8 +463,8 @@ class _EpisodePanelState extends State<EpisodePanel>
             onLongPress: onLongPress,
             onSecondaryTap: PlatformUtils.isMobile ? null : onLongPress,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: StyleString.safeSpace,
+              padding: const .symmetric(
+                horizontal: Style.safeSpace,
                 vertical: 5,
               ),
               child: Row(
@@ -472,8 +476,8 @@ class _EpisodePanelState extends State<EpisodePanel>
                       children: [
                         NetworkImgLayer(
                           src: cover,
-                          width: 140.8,
-                          height: 88,
+                          width: 160,
+                          height: 100,
                           cacheWidth: cacheWidth,
                         ),
                         if (duration != null && duration > 0)
@@ -505,7 +509,7 @@ class _EpisodePanelState extends State<EpisodePanel>
                     )
                   else if (isCurrentIndex)
                     Image.asset(
-                      'assets/images/live.png',
+                      Assets.livingStatic,
                       color: primary,
                       height: 12,
                       cacheHeight: 12.cacheSize(context),

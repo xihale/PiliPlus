@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:PiliPlus/common/widgets/fractionally_sized_box.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/gallery_viewer.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/hero_dialog_route.dart';
 import 'package:PiliPlus/grpc/im.dart';
@@ -11,15 +12,15 @@ import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models/dynamics/result.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/episode.dart';
+import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart';
 import 'package:PiliPlus/pages/common/publish/publish_route.dart';
 import 'package:PiliPlus/pages/contact/view.dart';
 import 'package:PiliPlus/pages/fav_panel/view.dart';
 import 'package:PiliPlus/pages/share/view.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
-import 'package:PiliPlus/utils/extension/extension.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
@@ -29,7 +30,7 @@ import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
-import 'package:floating/floating.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -37,9 +38,6 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 abstract final class PageUtils {
-  static final RouteObserver<PageRoute> routeObserver =
-      RouteObserver<PageRoute>();
-
   static RelativeRect menuPosition(Offset offset) {
     return .fromLTRB(offset.dx, offset.dy, offset.dx, 0);
   }
@@ -48,6 +46,8 @@ abstract final class PageUtils {
     int initialPage = 0,
     required List<SourceModel> imgList,
     int? quality,
+    ValueChanged<int>? onPageChanged,
+    String tag = '',
   }) {
     return Get.key.currentState!.push<void>(
       HeroDialogRoute(
@@ -55,6 +55,8 @@ abstract final class PageUtils {
           sources: imgList,
           initIndex: initialPage,
           quality: quality ?? GlobalData().imgQuality,
+          onPageChanged: onPageChanged,
+          tag: tag,
         ),
       ),
     );
@@ -185,27 +187,44 @@ abstract final class PageUtils {
     );
   }
 
-  static void enterPip({int? width, int? height, bool isAuto = false}) {
-    if (width != null && height != null) {
-      Rational aspectRatio = Rational(width, height);
-      aspectRatio = aspectRatio.fitsInAndroidRequirements
-          ? aspectRatio
-          : height > width
-          ? const Rational.vertical()
-          : const Rational.landscape();
-      Floating().enable(
-        isAuto
-            ? AutoEnable(aspectRatio: aspectRatio)
-            : EnableManual(aspectRatio: aspectRatio),
-      );
-    } else {
-      Floating().enable(isAuto ? const AutoEnable() : const EnableManual());
+  static bool _fitsInAndroidRequirements(int width, int height) {
+    final aspectRatio = width / height;
+    const min = 1 / 2.39;
+    const max = 2.39;
+    return (min <= aspectRatio) && (aspectRatio <= max);
+  }
+
+  static void enterPip({
+    int? width,
+    int? height,
+    bool autoEnter = false,
+    required bool isLive,
+    required bool isPlaying,
+  }) {
+    if (width != null &&
+        height != null &&
+        !_fitsInAndroidRequirements(width, height)) {
+      if (height > width) {
+        width = 9;
+        height = 16;
+      } else {
+        width = 16;
+        height = 9;
+      }
     }
+    PiliAndroidHelper.enterPip(
+      width ?? 16,
+      height ?? 9,
+      autoEnter: autoEnter,
+      isLive: isLive,
+      isPlaying: isPlaying,
+    );
   }
 
   static Future<void> pushDynDetail(
     DynamicItemModel item, {
     bool isPush = false,
+    bool viewComment = false,
   }) async {
     feedBack();
 
@@ -219,10 +238,15 @@ abstract final class PageUtils {
           },
         );
       } else {
+        if (item.linkFolded) {
+          pushDynFromId(id: item.idStr);
+          return;
+        }
         toDupNamed(
           '/dynamicDetail',
           arguments: {
             'item': item,
+            if (viewComment) 'viewComment': true,
           },
         );
       }
@@ -266,12 +290,14 @@ abstract final class PageUtils {
         try {
           String bvid = archive.bvid!;
           String cover = archive.cover!;
-          int? cid = await SearchHttp.ab2c(bvid: bvid);
+          final res = await SearchHttp.ab2cWithDimension(bvid: bvid);
+          final cid = res?.cid;
           if (cid != null) {
             toVideoPage(
               bvid: bvid,
               cid: cid,
               cover: cover,
+              dimension: res!.dimension,
             );
           }
         } catch (err) {
@@ -325,13 +351,15 @@ abstract final class PageUtils {
         int aid = ugcSeason.aid!;
         String bvid = IdUtils.av2bv(aid);
         String cover = ugcSeason.cover!;
-        int? cid = await SearchHttp.ab2c(bvid: bvid);
+        final res = await SearchHttp.ab2cWithDimension(bvid: bvid);
+        final cid = res?.cid;
         if (cid != null) {
           toVideoPage(
             aid: aid,
             bvid: bvid,
             cid: cid,
             cover: cover,
+            dimension: res!.dimension,
           );
         }
         break;
@@ -469,8 +497,8 @@ abstract final class PageUtils {
   static Future<void>? showVideoBottomSheet(
     BuildContext context, {
     required Widget child,
-    required ValueGetter<bool> isFullScreen,
-    double? padding,
+    ValueGetter<EdgeInsets>? padding,
+    double maxWidth = 500,
   }) {
     if (!context.mounted) {
       return null;
@@ -478,27 +506,17 @@ abstract final class PageUtils {
     return Get.key.currentState!.push(
       PublishRoute(
         pageBuilder: (context, animation, secondaryAnimation) {
-          if (context.isPortrait) {
-            return SafeArea(
-              child: FractionallySizedBox(
-                heightFactor: 0.7,
-                widthFactor: 1.0,
-                alignment: Alignment.bottomCenter,
-                child: isFullScreen() && padding != null
-                    ? Padding(
-                        padding: EdgeInsets.only(bottom: padding),
-                        child: child,
-                      )
-                    : child,
-              ),
-            );
-          }
+          final isPortrait = context.isPortrait;
           return SafeArea(
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              heightFactor: 1.0,
-              alignment: Alignment.centerRight,
-              child: child,
+            child: CustomFractionallySizedBox(
+              maxWidth: maxWidth,
+              widthFactor: isPortrait ? 1.0 : 0.5,
+              heightFactor: isPortrait ? 0.7 : 1.0,
+              alignment: isPortrait ? .bottomCenter : .centerRight,
+              child: Padding(
+                padding: isPortrait ? padding?.call() ?? .zero : .zero,
+                child: child,
+              ),
             ),
           );
         },
@@ -532,7 +550,7 @@ abstract final class PageUtils {
     if (off) {
       Get.offNamed('/liveRoom', arguments: roomId);
     } else {
-      Get.toNamed('/liveRoom', arguments: roomId);
+      PageUtils.toDupNamed('/liveRoom', arguments: roomId);
     }
   }
 
@@ -549,6 +567,8 @@ abstract final class PageUtils {
     int? progress, // milliseconds
     Map? extraArguments,
     bool off = false,
+    bool isVertical = false,
+    Dimension? dimension,
   }) {
     final arguments = {
       'aid': aid ?? IdUtils.bv2av(bvid!),
@@ -561,6 +581,7 @@ abstract final class PageUtils {
       'title': ?title,
       'progress': ?progress,
       'videoType': videoType,
+      'isVertical': dimension?.isVertical ?? isVertical,
       'heroTag': Utils.makeHeroTag(cid),
       ...?extraArguments,
     };
@@ -603,6 +624,7 @@ abstract final class PageUtils {
           seasonId: isSeason ? id : null,
           epId: isSeason ? null : id,
           aid: aid,
+          progress: progress,
           off: off,
         );
       }
@@ -731,6 +753,7 @@ abstract final class PageUtils {
     dynamic seasonId,
     dynamic epId,
     int? aid,
+    int? progress, // milliseconds
     bool off = false,
   }) async {
     try {
@@ -756,6 +779,7 @@ abstract final class PageUtils {
             seasonId: response.seasonId,
             epId: episode.id,
             cover: episode.cover,
+            progress: progress,
             extraArguments: {
               'pgcItem': response,
             },

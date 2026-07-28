@@ -1,13 +1,17 @@
+import 'dart:io' show Platform, Process;
+
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/pages/common/multi_select/base.dart'
     show MultiSelectData;
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/route_manager.dart';
 
 class BiliDownloadEntryInfo with MultiSelectData {
   int mediaType;
-  final bool hasDashAudio;
+  bool hasDashAudio;
   bool isCompleted;
   int totalBytes;
   int downloadedBytes;
@@ -54,7 +58,7 @@ class BiliDownloadEntryInfo with MultiSelectData {
     return title;
   }
 
-  Widget moreBtn(ThemeData theme) => SizedBox(
+  Widget moreBtn(ColorScheme colorScheme) => SizedBox(
     width: 29,
     height: 29,
     child: PopupMenuButton(
@@ -62,16 +66,13 @@ class BiliDownloadEntryInfo with MultiSelectData {
       position: PopupMenuPosition.under,
       icon: Icon(
         Icons.more_vert_outlined,
-        color: theme.colorScheme.outline,
+        color: colorScheme.outline,
         size: 18,
       ),
       itemBuilder: (_) => [
         PopupMenuItem(
           height: 38,
-          child: const Text(
-            '查看详情页',
-            style: TextStyle(fontSize: 13),
-          ),
+          child: const Text('查看详情页', style: TextStyle(fontSize: 13)),
           onTap: () {
             if (ep case final ep?) {
               if (ep.from == VideoType.pugv.name) {
@@ -94,17 +95,38 @@ class BiliDownloadEntryInfo with MultiSelectData {
               epId: ep?.episodeId,
               title: title,
               cover: cover,
+              isVertical: pageData?.isVertical ?? false,
             );
           },
         ),
+        if (PlatformUtils.isDesktop)
+          PopupMenuItem(
+            height: 38,
+            child: const Text('打开本地文件夹', style: TextStyle(fontSize: 13)),
+            onTap: () async {
+              try {
+                final String executable;
+                if (Platform.isWindows) {
+                  executable = 'explorer';
+                } else if (Platform.isMacOS) {
+                  executable = 'open';
+                } else if (Platform.isLinux) {
+                  executable = 'xdg-open';
+                } else {
+                  throw UnimplementedError();
+                }
+                await Process.run(executable, [entryDirPath]);
+              } catch (e) {
+                SmartDialog.showToast(e.toString());
+              }
+            },
+          ),
         if (ownerId case final mid?)
           PopupMenuItem(
             height: 38,
             child: Text(
               '访问${ownerName != null ? '：$ownerName' : '用户主页'}',
-              style: const TextStyle(
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontSize: 13),
             ),
             onTap: () => Get.toNamed('/member?mid=$mid'),
           ),
@@ -240,6 +262,8 @@ class PageInfo {
   final String? downloadSubtitle;
 
   bool get cacheWidth => width <= height;
+
+  bool get isVertical => rotate == 1 ? width > height : height > width;
 
   PageInfo({
     required this.cid,
@@ -395,7 +419,7 @@ enum DownloadStatus {
   failDanmaku('获取弹幕失败'),
   failPlayUrl('获取播放地址失败'),
   pause('暂停中'),
-  wait('等待中')
+  wait('等待中'),
   ;
 
   final String message;

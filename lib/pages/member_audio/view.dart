@@ -1,4 +1,4 @@
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
 import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
@@ -26,7 +26,7 @@ class MemberAudio extends StatefulWidget {
 }
 
 class _MemberAudioState extends State<MemberAudio>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, GridMixin {
   late final MemberAudioController _controller;
 
   @override
@@ -63,13 +63,6 @@ class _MemberAudioState extends State<MemberAudio>
   @override
   bool get wantKeepAlive => true;
 
-  late final gridDelegate = SliverGridDelegateWithExtentAndRatio(
-    mainAxisSpacing: 2,
-    maxCrossAxisExtent: Grid.smallCardWidth * 2,
-    childAspectRatio: StyleString.aspectRatio * 2.6,
-    minHeight: MediaQuery.textScalerOf(context).scale(90),
-  );
-
   Widget _buildBody(
     ColorScheme colorScheme,
     LoadingState<List<SpaceAudioItem>?> loadingState,
@@ -93,7 +86,7 @@ class _MemberAudioState extends State<MemberAudio>
                           Padding(
                             padding: const EdgeInsets.only(left: 6),
                             child: TextButton.icon(
-                              style: StyleString.buttonStyle,
+                              style: Style.buttonStyle,
                               onPressed: _controller.toViewPlayAll,
                               icon: Icon(
                                 Icons.play_circle_outline_rounded,

@@ -17,11 +17,11 @@
 
 import 'dart:io' show Platform;
 
-import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_builder.dart';
-import 'package:PiliPlus/models/common/badge_type.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -33,7 +33,7 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_navigation/get_navigation.dart';
+import 'package:get/get_navigation/src/extension_navigation.dart';
 
 class ImageModel {
   ImageModel({
@@ -54,7 +54,7 @@ class ImageModel {
   bool? _isLivePhoto;
 
   bool get isLongPic =>
-      _isLongPic ??= (height / width) > StyleString.imgMaxRatio;
+      _isLongPic ??= (height / width) > Style.imgMaxRatio && width > 100;
   bool get isLivePhoto =>
       _isLivePhoto ??= enableLivePhoto && liveUrl?.isNotEmpty == true;
 
@@ -74,14 +74,14 @@ class ImageGridView extends StatelessWidget {
   final bool fullScreen;
 
   static bool horizontalPreview = Pref.horizontalPreview;
-  static const _routes = ['/videoV', '/dynamicDetail'];
+  static final _regex = RegExp(r'/videoV|/dynamicDetail$|/articlePage');
 
   void _onTap(BuildContext context, int index) {
     final imgList = picArr.map(
       (item) {
         bool isLive = item.isLivePhoto;
         return SourceModel(
-          sourceType: isLive ? SourceType.livePhoto : SourceType.networkImage,
+          sourceType: isLive ? .livePhoto : .networkImage,
           url: item.url,
           liveUrl: isLive ? item.liveUrl : null,
           width: isLive ? item.width.toInt() : null,
@@ -92,7 +92,7 @@ class ImageGridView extends StatelessWidget {
     ).toList();
     if (horizontalPreview &&
         !fullScreen &&
-        _routes.contains(Get.currentRoute) &&
+        Get.currentRoute.startsWith(_regex) &&
         !context.mediaQuerySize.isPortrait) {
       final scaffoldState = Scaffold.maybeOf(context);
       if (scaffoldState != null) {
@@ -108,6 +108,7 @@ class ImageGridView extends StatelessWidget {
     PageUtils.imageView(
       initialPage: index,
       imgList: imgList,
+      tag: hashCode.toString(),
     );
   }
 
@@ -115,9 +116,9 @@ class ImageGridView extends StatelessWidget {
     int col,
     int length,
     int index, {
-    Radius r = StyleString.imgRadius,
+    Radius r = Style.imgRadius,
   }) {
-    if (length == 1) return StyleString.mdRadius;
+    if (length == 1) return Style.mdRadius;
 
     final bool hasUp = index - col >= 0;
     final bool hasDown = index + col < length;
@@ -207,18 +208,19 @@ class ImageGridView extends StatelessWidget {
             width: width,
             height: height,
             decoration: BoxDecoration(
-              color: Theme.of(
+              color: ColorScheme.of(
                 context,
-              ).colorScheme.onInverseSurface.withValues(alpha: 0.4),
+              ).onInverseSurface.withValues(alpha: 0.4),
             ),
             child: Image.asset(
-              'assets/images/loading.png',
+              Assets.loading,
               width: width,
               height: height,
               cacheWidth: width.cacheSize(context),
             ),
           );
           return List.generate(picArr.length, (index) {
+            void onTap() => _onTap(context, index);
             final item = picArr[index];
             final borderRadius = _borderRadius(
               info.column,
@@ -239,30 +241,21 @@ class ImageGridView extends StatelessWidget {
                   getPlaceHolder: () => placeHolder,
                 ),
                 if (item.isLivePhoto)
-                  const PBadge(
-                    text: 'Live',
-                    right: 8,
-                    bottom: 8,
-                    type: PBadgeType.gray,
-                  )
+                  const PBadge(text: 'Live', right: 8, bottom: 8, type: .gray)
                 else if (item.isLongPic)
-                  const PBadge(
-                    text: '长图',
-                    right: 8,
-                    bottom: 8,
-                  ),
+                  const PBadge(text: '长图', right: 8, bottom: 8),
               ],
             );
             if (!item.isLongPic) {
-              child = Hero(
-                tag: item.url,
-                child: child,
-              );
+              child = Hero(tag: '${item.url}$hashCode', child: child);
             }
-            return LayoutId(
-              id: index,
+            child = Semantics(
+              label: '图片，第 ${index + 1} 张，共 ${picArr.length} 张',
+              button: true,
+              onTap: onTap,
               child: child,
             );
+            return LayoutId(id: index, child: child);
           });
         },
       ),

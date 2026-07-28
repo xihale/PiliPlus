@@ -1,10 +1,11 @@
 import 'dart:io';
-import 'dart:math' show pi, max;
+import 'dart:math' show max;
 
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
+import 'package:PiliPlus/common/widgets/dialog/simple_dialog_option.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart'
-    show touchSlopH;
+    show deviceTouchSlop, touchSlopH;
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart'
     show ImageGridView, ImageModel;
 import 'package:PiliPlus/common/widgets/pendant_avatar.dart';
@@ -32,6 +33,8 @@ import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
+import 'package:PiliPlus/utils/filtering_text.dart';
+import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -42,7 +45,7 @@ import 'package:PiliPlus/utils/update.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RefreshIndicator;
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -69,19 +72,16 @@ List<SettingsModel> get extraSettings => [
       onTap: _showDownPathDialog,
     ),
   ],
-  SwitchModel(
-    title: '空降助手',
-    subtitle: '点击配置',
-    setKey: SettingBoxKey.enableSponsorBlock,
-    defaultVal: false,
-    onTap: (context) => Get.toNamed('/sponsorBlock'),
-    leading: const Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Icon(Icons.shield_outlined),
-        Icon(Icons.play_arrow_rounded, size: 15),
-      ],
+  SplitModel(
+    normalModel: const NormalModel.split(
+      title: '空降助手',
+      subtitle: '点击配置',
+      leading: Icon(CustomIcons.shield_play_arrow),
+    ),
+    switchModel: SwitchModel.split(
+      defaultVal: false,
+      setKey: SettingBoxKey.enableSponsorBlock,
+      onTap: (context) => Get.toNamed('/sponsorBlock'),
     ),
   ),
   PopupModel<SkipType>(
@@ -93,21 +93,22 @@ List<SettingsModel> get extraSettings => [
         .put(SettingBoxKey.pgcSkipType, value.index)
         .whenComplete(setState),
   ),
-  SwitchModel(
-    title: '检查未读动态',
-    subtitle: '点击设置检查周期(min)',
-    leading: const Icon(Icons.notifications_none),
-    setKey: SettingBoxKey.checkDynamic,
-    defaultVal: true,
-    onChanged: (value) => Get.find<MainController>().checkDynamic = value,
-    onTap: _showDynDialog,
-  ),
-  SwitchModel(
-    title: '显示视频分段信息',
-    leading: Transform.rotate(
-      angle: pi / 2,
-      child: const Icon(MdiIcons.viewHeadline),
+  SplitModel(
+    normalModel: const NormalModel.split(
+      title: '检查未读动态',
+      subtitle: '点击设置检查周期(min)',
+      leading: Icon(Icons.notifications_none),
     ),
+    switchModel: SwitchModel.split(
+      defaultVal: true,
+      setKey: SettingBoxKey.checkDynamic,
+      onChanged: (value) => Get.find<MainController>().checkDynamic = value,
+      onTap: _showDynDialog,
+    ),
+  ),
+  const SwitchModel(
+    title: '显示视频分段信息',
+    leading: Icon(CustomIcons.view_headline_rotate_90),
     setKey: SettingBoxKey.showViewPoints,
     defaultVal: true,
   ),
@@ -145,13 +146,13 @@ List<SettingsModel> get extraSettings => [
     title: '横屏分P/合集列表显示在Tab栏',
     leading: const Icon(Icons.format_list_numbered_rtl_sharp),
     setKey: SettingBoxKey.horizontalSeasonPanel,
-    defaultVal: PlatformUtils.isDesktop,
+    defaultVal: Pref.horizontalScreen,
   ),
   SwitchModel(
     title: '横屏播放页在侧栏打开UP主页',
     leading: const Icon(Icons.account_circle_outlined),
     setKey: SettingBoxKey.horizontalMemberPage,
-    defaultVal: PlatformUtils.isDesktop,
+    defaultVal: Pref.horizontalScreen,
   ),
   SwitchModel(
     title: '横屏在侧栏打开图片预览',
@@ -237,7 +238,7 @@ List<SettingsModel> get extraSettings => [
   ),
   NormalModel(
     title: '横向滑动阈值',
-    getSubtitle: () => '当前:「${Pref.touchSlopH}」',
+    getSubtitle: () => '当前:「${Pref.touchSlopH}」，系统默认值: $deviceTouchSlop',
     onTap: _showTouchSlopDialog,
     leading: const Icon(Icons.pan_tool_alt_outlined),
   ),
@@ -329,9 +330,16 @@ List<SettingsModel> get extraSettings => [
   SwitchModel(
     title: '展示头像/评论/动态装饰',
     leading: const Icon(MdiIcons.stickerCircleOutline),
-    setKey: SettingBoxKey.showDynDecorate,
+    setKey: SettingBoxKey.showDecorate,
     defaultVal: true,
-    onChanged: (value) => PendantAvatar.showDynDecorate = value,
+    onChanged: (value) => PendantAvatar.showDecorate = value,
+  ),
+  SwitchModel(
+    title: '显示粉丝勋章',
+    leading: const Icon(MdiIcons.medalOutline),
+    setKey: SettingBoxKey.showMedal,
+    defaultVal: true,
+    onChanged: (value) => GlobalData().showMedal = value,
   ),
   SwitchModel(
     title: '预览 Live Photo',
@@ -364,14 +372,7 @@ List<SettingsModel> get extraSettings => [
   const SwitchModel(
     title: '发评反诈',
     subtitle: '发送评论后检查评论是否可见',
-    leading: Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Icon(Icons.shield_outlined),
-        Icon(Icons.reply, size: 14),
-      ],
-    ),
+    leading: Icon(CustomIcons.shield_reply),
     setKey: SettingBoxKey.enableCommAntifraud,
     defaultVal: false,
   ),
@@ -388,51 +389,27 @@ List<SettingsModel> get extraSettings => [
   const SwitchModel(
     title: '发布/转发动态反诈',
     subtitle: '发布/转发动态后检查动态是否可见',
-    leading: Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Icon(Icons.shield_outlined),
-        Icon(Icons.motion_photos_on, size: 12),
-      ],
-    ),
+    leading: Icon(CustomIcons.shield_published),
     setKey: SettingBoxKey.enableCreateDynAntifraud,
     defaultVal: false,
   ),
   SwitchModel(
     title: '屏蔽带货动态',
-    leading: const Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Icon(Icons.shopping_bag_outlined, size: 14),
-        Icon(Icons.not_interested),
-      ],
-    ),
+    leading: const Icon(CustomIcons.shopping_bag_not_interested),
     setKey: SettingBoxKey.antiGoodsDyn,
     defaultVal: false,
     onChanged: (value) => DynamicsDataModel.antiGoodsDyn = value,
   ),
   SwitchModel(
     title: '屏蔽带货评论',
-    leading: const Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Icon(Icons.shopping_bag_outlined, size: 14),
-        Icon(Icons.not_interested),
-      ],
-    ),
+    leading: const Icon(CustomIcons.shopping_bag_not_interested),
     setKey: SettingBoxKey.antiGoodsReply,
     defaultVal: false,
     onChanged: (value) => ReplyGrpc.antiGoodsReply = value,
   ),
   SwitchModel(
     title: '侧滑关闭二级页面',
-    leading: Transform.rotate(
-      angle: pi * 1.5,
-      child: const Icon(Icons.touch_app),
-    ),
+    leading: const Icon(CustomIcons.touch_app_rotate_270),
     setKey: SettingBoxKey.slideDismissReplyPage,
     defaultVal: Platform.isIOS,
     onChanged: (value) => CommonSlideMixin.slideDismissReplyPage = value,
@@ -613,26 +590,22 @@ List<SettingsModel> get extraSettings => [
     defaultVal: false,
     onChanged: (value) => MemberTabType.showMemberShop = value,
   ),
-  const SwitchModel(
-    leading: Icon(Icons.airplane_ticket_outlined),
-    title: '设置代理',
-    subtitle: '设置代理 host:port',
-    setKey: SettingBoxKey.enableSystemProxy,
-    onTap: _showProxyDialog,
-  ),
-  const SwitchModel(
-    title: '自动清除缓存',
-    subtitle: '每次启动时清除缓存',
-    leading: Icon(Icons.auto_delete_outlined),
-    setKey: SettingBoxKey.autoClearCache,
-    defaultVal: false,
+  const SplitModel(
+    normalModel: NormalModel.split(
+      title: '设置代理',
+      subtitle: '设置代理 host:port',
+      leading: Icon(Icons.airplane_ticket_outlined),
+    ),
+    switchModel: SwitchModel.split(
+      defaultVal: false,
+      setKey: SettingBoxKey.enableSystemProxy,
+      onTap: _showProxyDialog,
+    ),
   ),
   NormalModel(
     title: '最大缓存大小',
-    getSubtitle: () {
-      final num = Pref.maxCacheSize;
-      return '当前最大缓存大小: 「${num == 0 ? '无限' : CacheManager.formatSize(Pref.maxCacheSize)}」';
-    },
+    getSubtitle: () =>
+        '当前最大缓存大小: 「${CacheManager.formatSize(Pref.maxCacheSize)}」',
     leading: const Icon(Icons.delete_outlined),
     onTap: _showCacheDialog,
   ),
@@ -746,48 +719,42 @@ Future<void> audioNormalization(
 void _showDownPathDialog(BuildContext context, VoidCallback setState) {
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => SimpleDialog(
       clipBehavior: Clip.hardEdge,
       contentPadding: const EdgeInsets.symmetric(vertical: 12),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            onTap: () {
-              Get.back();
-              Utils.copyText(downloadPath);
-            },
-            dense: true,
-            title: const Text('复制', style: TextStyle(fontSize: 14)),
-          ),
-          ListTile(
-            onTap: () {
-              Get.back();
-              final defPath = defDownloadPath;
-              if (downloadPath == defPath) return;
-              downloadPath = defPath;
-              setState();
-              Get.find<DownloadService>().initDownloadList();
-              GStorage.setting.delete(SettingBoxKey.downloadPath);
-            },
-            dense: true,
-            title: const Text('重置', style: TextStyle(fontSize: 14)),
-          ),
-          ListTile(
-            onTap: () async {
-              Get.back();
-              final path = await FilePicker.getDirectoryPath();
-              if (path == null || path == downloadPath) return;
-              downloadPath = path;
-              setState();
-              Get.find<DownloadService>().initDownloadList();
-              GStorage.setting.put(SettingBoxKey.downloadPath, path);
-            },
-            dense: true,
-            title: const Text('设置新路径', style: TextStyle(fontSize: 14)),
-          ),
-        ],
-      ),
+      children: [
+        DialogOption(
+          onPressed: () {
+            Get.back();
+            Utils.copyText(downloadPath);
+          },
+          child: const Text('复制', style: TextStyle(fontSize: 14)),
+        ),
+        DialogOption(
+          onPressed: () {
+            Get.back();
+            final defPath = defDownloadPath;
+            if (downloadPath == defPath) return;
+            downloadPath = defPath;
+            setState();
+            Get.find<DownloadService>().initDownloadList();
+            GStorage.setting.delete(SettingBoxKey.downloadPath);
+          },
+          child: const Text('重置', style: TextStyle(fontSize: 14)),
+        ),
+        DialogOption(
+          onPressed: () async {
+            Get.back();
+            final path = await FilePicker.getDirectoryPath();
+            if (path == null || path == downloadPath) return;
+            downloadPath = path;
+            setState();
+            Get.find<DownloadService>().initDownloadList();
+            GStorage.setting.put(SettingBoxKey.downloadPath, path);
+          },
+          child: const Text('设置新路径', style: TextStyle(fontSize: 14)),
+        ),
+      ],
     ),
   );
 }
@@ -884,9 +851,7 @@ void _showDmHeightDialog(BuildContext context, VoidCallback setState) {
         initialValue: danmakuLineHeight,
         keyboardType: const .numberWithOptions(decimal: true),
         onChanged: (value) => danmakuLineHeight = value,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[\d\.]+')),
-        ],
+        inputFormatters: FilteringText.decimal,
       ),
       actions: [
         TextButton(
@@ -928,9 +893,7 @@ void _showTouchSlopDialog(BuildContext context, VoidCallback setState) {
         initialValue: initialValue,
         keyboardType: const .numberWithOptions(decimal: true),
         onChanged: (value) => initialValue = value,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[\d\.]+')),
-        ],
+        inputFormatters: FilteringText.decimal,
       ),
       actions: [
         TextButton(
@@ -966,7 +929,7 @@ Future<void> _showRefreshDragDialog(
   final res = await showDialog<double>(
     context: context,
     builder: (context) => SliderDialog(
-      title: '刷新滑动距离',
+      title: const Text('刷新滑动距离'),
       min: 0.1,
       max: 0.5,
       divisions: 8,
@@ -978,7 +941,7 @@ Future<void> _showRefreshDragDialog(
   if (res != null) {
     kDragContainerExtentPercentage = res;
     await GStorage.setting.put(SettingBoxKey.refreshDragPercentage, res);
-    Get.forceAppUpdate();
+    setState();
   }
 }
 
@@ -989,7 +952,7 @@ Future<void> _showRefreshDialog(
   final res = await showDialog<double>(
     context: context,
     builder: (context) => SliderDialog(
-      title: '刷新指示器高度',
+      title: const Text('刷新指示器高度'),
       min: 10.0,
       max: 100.0,
       divisions: 9,
@@ -999,7 +962,19 @@ Future<void> _showRefreshDialog(
   if (res != null) {
     displacement = res;
     await GStorage.setting.put(SettingBoxKey.refreshDisplacement, res);
-    Get.forceAppUpdate();
+    if (WidgetsBinding.instance.rootElement case final context?) {
+      context.visitChildElements(_visitor);
+    }
+    setState();
+  }
+}
+
+void _visitor(Element context) {
+  if (!context.mounted) return;
+  if (context.widget is RefreshIndicator) {
+    context.markNeedsBuild();
+  } else {
+    context.visitChildren(_visitor);
   }
 }
 
@@ -1077,7 +1052,7 @@ Future<void> _showReplyCountDialog(
   final res = await showDialog<double>(
     context: context,
     builder: (context) => SliderDialog(
-      title: '连接重试次数',
+      title: const Text('连接重试次数'),
       min: 0,
       max: 8,
       divisions: 8,
@@ -1099,7 +1074,7 @@ Future<void> _showReplyDelayDialog(
   final res = await showDialog<double>(
     context: context,
     builder: (context) => SliderDialog(
-      title: '连接重试间隔',
+      title: const Text('连接重试间隔'),
       min: 0,
       max: 1000,
       divisions: 10,
@@ -1224,9 +1199,7 @@ void _showProxyDialog(BuildContext context) {
             decoration: const InputDecoration(
               isDense: true,
               labelText: '请输入Port',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(6)),
-              ),
+              border: OutlineInputBorder(borderRadius: .all(.circular(6))),
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onChanged: (e) => systemProxyPort = e,
@@ -1270,9 +1243,7 @@ void _showCacheDialog(BuildContext context, VoidCallback setState) {
         autofocus: true,
         onChanged: (value) => valueStr = value,
         keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[\d\.]+')),
-        ],
+        inputFormatters: FilteringText.decimal,
         decoration: const InputDecoration(suffixText: 'MB'),
       ),
       actions: [

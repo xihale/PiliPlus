@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:math' show max;
 
+import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart';
 import 'package:PiliPlus/pages/common/publish/publish_route.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -14,33 +15,35 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+typedef OnPayCoin = Function(int coin, bool coinWithLike);
+
 class PayCoinsPage extends StatefulWidget {
   const PayCoinsPage({
     super.key,
     required this.onPayCoin,
-    int copyright = 1,
-    this.hasCoin = false,
-  }) : hasCopyright = copyright == 1;
+    required this.hasCoin,
+    required this.hasCopyright,
+  });
 
-  final Function(int coin, bool coinWithLike) onPayCoin;
-  final bool hasCopyright;
+  final OnPayCoin onPayCoin;
   final bool hasCoin;
+  final bool hasCopyright;
 
   @override
   State<PayCoinsPage> createState() => _PayCoinsPageState();
 
   static void toPayCoinsPage({
-    required Function(int coin, bool coinWithLike) onPayCoin,
-    int copyright = 1,
-    bool hasCoin = false,
+    required OnPayCoin onPayCoin,
+    required bool hasCoin,
+    required bool hasCopyright,
   }) {
     Get.key.currentState!.push(
       PublishRoute(
         pageBuilder: (buildContext, animation, secondaryAnimation) {
           return PayCoinsPage(
             onPayCoin: onPayCoin,
-            copyright: copyright,
             hasCoin: hasCoin,
+            hasCopyright: hasCopyright,
           );
         },
         transitionDuration: const Duration(milliseconds: 225),
@@ -76,9 +79,9 @@ class _PayCoinsPageState extends State<PayCoinsPage>
   Timer? _timer;
   late final RxInt _thunderIndex = (-1).obs;
   static const List<String> _thunderImages = [
-    'assets/images/paycoins/ic_thunder_1.png',
-    'assets/images/paycoins/ic_thunder_2.png',
-    'assets/images/paycoins/ic_thunder_3.png',
+    Assets.thunder1,
+    Assets.thunder2,
+    Assets.thunder3,
   ];
   void _cancelTimer() {
     _timer?.cancel();
@@ -99,15 +102,13 @@ class _PayCoinsPageState extends State<PayCoinsPage>
 
   String _getPayImage(int index, bool canPay) {
     if (!canPay) {
-      return 'assets/images/paycoins/ic_22_not_enough_pay.png';
+      return Assets.notEnough;
     }
-    return index == 0
-        ? 'assets/images/paycoins/ic_22_mario.png'
-        : 'assets/images/paycoins/ic_22_gun_sister.png';
+    return index == 0 ? Assets.mario : Assets.gunSister;
   }
 
-  late final color = Colors.black.withValues(alpha: 0.4);
-  Color _getPayFilter(int index) => _canPay(index) ? Colors.transparent : color;
+  Color _getPayFilter(int index) =>
+      _canPay(index) ? Colors.transparent : const Color(0x66000000);
 
   @override
   void initState() {
@@ -200,42 +201,39 @@ class _PayCoinsPageState extends State<PayCoinsPage>
   }
 
   Widget _buildCoinWidget(int index, double factor) {
-    return Center(
-      child: SizedBox(
-        height: 70 + (factor * 30),
-        width: 70 + (factor * 30),
-        child: ColorFiltered(
-          colorFilter: ColorFilter.mode(
-            _getPayFilter(index),
-            BlendMode.srcATop,
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              SlideTransition(
-                position: _boxAnim,
-                child: Image.asset(
-                  'assets/images/paycoins/ic_pay_coins_box.png',
-                ),
-              ),
-              SlideTransition(
-                position: _coinSlideAnim,
-                child: FadeTransition(
-                  opacity: _coinFadeAnim,
-                  child: Image.asset(
-                    height: 35 + (factor * 15),
-                    width: 35 + (factor * 15),
-                    index == 0
-                        ? 'assets/images/paycoins/ic_coins_one.png'
-                        : 'assets/images/paycoins/ic_coins_two.png',
-                  ),
-                ),
-              ),
-            ],
+    final filter = _getPayFilter(index);
+    final boxSize = 70 + (factor * 30);
+    final coinSize = 35 + (factor * 15);
+    return Stack(
+      alignment: .center,
+      clipBehavior: .none,
+      children: [
+        SlideTransition(
+          position: _boxAnim,
+          child: Image.asset(
+            Assets.payBox,
+            color: filter,
+            width: boxSize,
+            height: boxSize,
+            cacheWidth: 100.cacheSize(context),
+            colorBlendMode: .srcATop,
           ),
         ),
-      ),
+        SlideTransition(
+          position: _coinSlideAnim,
+          child: FadeTransition(
+            opacity: _coinFadeAnim,
+            child: Image.asset(
+              height: coinSize,
+              width: coinSize,
+              cacheWidth: 50.cacheSize(context),
+              color: filter,
+              colorBlendMode: .srcATop,
+              index == 0 ? Assets.coinsOne : Assets.coinsTwo,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -356,9 +354,7 @@ class _PayCoinsPageState extends State<PayCoinsPage>
                               child: Image.asset(
                                 width: 16,
                                 height: 28,
-                                index == 0
-                                    ? 'assets/images/paycoins/ic_left_disable.png'
-                                    : 'assets/images/paycoins/ic_left.png',
+                                index == 0 ? Assets.leftDisable : Assets.left,
                                 cacheWidth: 16.cacheSize(context),
                               ),
                             ),
@@ -381,9 +377,7 @@ class _PayCoinsPageState extends State<PayCoinsPage>
                             child: Image.asset(
                               width: 16,
                               height: 28,
-                              index == 1
-                                  ? 'assets/images/paycoins/ic_right_disable.png'
-                                  : 'assets/images/paycoins/ic_right.png',
+                              index == 1 ? Assets.rightDisable : Assets.right,
                               cacheWidth: 16.cacheSize(context),
                             ),
                           ),
@@ -393,8 +387,13 @@ class _PayCoinsPageState extends State<PayCoinsPage>
                   ],
                 )
               else
-                SizedBox(height: 100, child: _buildCoinWidget(0, 1)),
-              SizedBox(height: isV ? 25 : 10),
+                Center(
+                  child: SizedBox(height: 100, child: _buildCoinWidget(0, 1)),
+                ),
+              if (isV)
+                const SizedBox(height: 25)
+              else
+                const SizedBox(height: 10),
               if (_hasCopyright)
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -458,7 +457,7 @@ class _PayCoinsPageState extends State<PayCoinsPage>
                         width: 30,
                         height: 30,
                         child: Image.asset(
-                          'assets/images/paycoins/ic_panel_close.png',
+                          Assets.panelClose,
                           width: 30,
                           height: 30,
                           cacheWidth: 30.cacheSize(context),

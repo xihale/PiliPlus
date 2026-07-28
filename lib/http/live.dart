@@ -19,6 +19,7 @@ import 'package:PiliPlus/models_new/live/live_emote/data.dart';
 import 'package:PiliPlus/models_new/live/live_emote/datum.dart';
 import 'package:PiliPlus/models_new/live/live_feed_index/data.dart';
 import 'package:PiliPlus/models_new/live/live_follow/data.dart';
+import 'package:PiliPlus/models_new/live/live_medal_wall/data.dart';
 import 'package:PiliPlus/models_new/live/live_room_info_h5/data.dart';
 import 'package:PiliPlus/models_new/live/live_room_play_info/data.dart';
 import 'package:PiliPlus/models_new/live/live_search/data.dart';
@@ -33,7 +34,7 @@ import 'package:dio/dio.dart';
 abstract final class LiveHttp {
   static Account get recommend => Accounts.get(AccountType.recommend);
 
-  static Future<LoadingState<Null>> sendLiveMsg({
+  static Future<LoadingState<void>> sendLiveMsg({
     required Object roomId,
     required Object msg,
     Object? dmType,
@@ -101,7 +102,11 @@ abstract final class LiveHttp {
       }),
     );
     if (res.data['code'] == 0) {
-      return Success(RoomPlayInfoData.fromJson(res.data['data']));
+      try {
+        return Success(RoomPlayInfoData.fromJson(res.data['data']));
+      } catch (e) {
+        return Error(e.toString());
+      }
     } else {
       return Error(res.data['message']);
     }
@@ -162,7 +167,11 @@ abstract final class LiveHttp {
       }),
     );
     if (res.data['code'] == 0) {
-      return Success(LiveDmInfoData.fromJson(res.data['data']));
+      try {
+        return Success(LiveDmInfoData.fromJson(res.data['data']));
+      } catch (e) {
+        return Error(e.toString());
+      }
     } else {
       return Error(res.data['message']);
     }
@@ -385,7 +394,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> setLiveFavTag({
+  static Future<LoadingState<void>> setLiveFavTag({
     required String ids,
   }) async {
     final data = {
@@ -505,7 +514,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> liveSetSilent({
+  static Future<LoadingState<void>> liveSetSilent({
     required String type,
     required int level,
   }) async {
@@ -527,7 +536,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> addShieldKeyword({
+  static Future<LoadingState<void>> addShieldKeyword({
     required String keyword,
   }) async {
     final csrf = Accounts.main.csrf;
@@ -547,7 +556,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> delShieldKeyword({
+  static Future<LoadingState<void>> delShieldKeyword({
     required String keyword,
   }) async {
     final csrf = Accounts.main.csrf;
@@ -591,7 +600,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> liveLikeReport({
+  static Future<LoadingState<void>> liveLikeReport({
     required int clickTime,
     required Object roomId,
     required Object uid,
@@ -637,7 +646,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> liveDmReport({
+  static Future<LoadingState<void>> liveDmReport({
     required int roomId,
     required Object mid,
     required String msg,
@@ -707,7 +716,7 @@ abstract final class LiveHttp {
     }
   }
 
-  static Future<LoadingState<Null>> superChatReport({
+  static Future<LoadingState<void>> superChatReport({
     required int id,
     required Object roomId,
     required Object uid,
@@ -735,6 +744,57 @@ abstract final class LiveHttp {
         'visit_id': '',
       },
       options: Options(contentType: Headers.formUrlEncodedContentType),
+    );
+    if (res.data['code'] == 0) {
+      return const Success(null);
+    } else {
+      return Error(res.data['message']);
+    }
+  }
+
+  static Future<LoadingState<MedalWallData>> liveMedalWall({
+    required Object mid,
+  }) async {
+    final res = await Request().get(
+      Api.liveMedalWall,
+      queryParameters: {'target_id': mid},
+    );
+    if (res.data['code'] == 0) {
+      return Success(MedalWallData.fromJson(res.data['data']));
+    } else {
+      return Error(res.data['message']);
+    }
+  }
+
+  static Future<LoadingState<void>> liveFeedback(
+    Object roomId,
+    Object id,
+    String type, {
+    int page = 1,
+  }) async {
+    final params = {
+      'access_key': ?recommend.accessKey,
+      'actionKey': 'appkey',
+      'build': 8430300,
+      'channel': 'master',
+      'c_locale': 'zh_CN',
+      'device': 'android',
+      'disable_rcmd': 0,
+      'mobi_app': 'android',
+      'platform': 'android',
+      's_locale': 'zh_CN',
+      'statistics': Constants.statisticsApp,
+      'version': '8.43.0',
+      'id': id,
+      'id_type': type,
+      'room_id': roomId,
+      'type': 'dislike',
+      'page': page,
+    };
+    AppSign.appSign(params);
+    final res = await Request().get(
+      Api.liveFeedback,
+      queryParameters: params,
     );
     if (res.data['code'] == 0) {
       return const Success(null);

@@ -4,49 +4,49 @@ import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 
 class HistoryItemModel with MultiSelectData {
   String? title;
-  String? longTitle;
   String? cover;
   List<String>? covers;
   String? uri;
   late History history;
   int? videos;
   String? authorName;
-  String? authorFace;
   int? authorMid;
   int? viewAt;
   int? progress;
   String? badge;
   String? showTitle;
   int? duration;
-  String? current;
-  int? total;
-  String? newDesc;
-  int? isFinish;
   int? isFav;
   int? kid;
   String? tagName;
   int? liveStatus;
 
+  /// The history API uses seconds as the progress unit
+  /// while the player expects milliseconds.
+  ///
+  /// The history API uses `-1` to indicate that the video has been fully watched.
+  /// When reopened, playback should start from the beginning to avoid resuming from
+  /// the last playback position associated with the video streaming account.
+  int? get playbackProgress {
+    final progress = this.progress;
+    if (progress == null) return null;
+    return progress == -1 ? 0 : progress * Duration.millisecondsPerSecond;
+  }
+
   HistoryItemModel({
     this.title,
-    this.longTitle,
     this.cover,
     this.covers,
     this.uri,
     required this.history,
     this.videos,
     this.authorName,
-    this.authorFace,
     this.authorMid,
     this.viewAt,
     this.progress,
     this.badge,
     this.showTitle,
     this.duration,
-    this.current,
-    this.total,
-    this.newDesc,
-    this.isFinish,
     this.isFav,
     this.kid,
     this.tagName,
@@ -56,7 +56,6 @@ class HistoryItemModel with MultiSelectData {
   factory HistoryItemModel.fromJson(Map<String, dynamic> json) =>
       HistoryItemModel(
         title: json['title'] as String?,
-        longTitle: json['long_title'] as String?,
         cover: json['cover'] as String?,
         covers: (json['covers'] as List?)?.fromCast(),
         uri: json['uri'] as String?,
@@ -65,17 +64,12 @@ class HistoryItemModel with MultiSelectData {
             : History.fromJson(json['history'] as Map<String, dynamic>),
         videos: json['videos'] as int?,
         authorName: json['author_name'] as String?,
-        authorFace: json['author_face'] as String?,
         authorMid: json['author_mid'] as int?,
         viewAt: json['view_at'] as int?,
         progress: json['progress'] as int?,
         badge: json['badge'] as String?,
         showTitle: json['show_title'] as String?,
         duration: json['duration'] as int?,
-        current: json['current'] as String?,
-        total: json['total'] as int?,
-        newDesc: json['new_desc'] as String?,
-        isFinish: json['is_finish'] as int?,
         isFav: json['is_fav'] as int?,
         kid: json['kid'] as int?,
         tagName: json['tag_name'] as String?,
