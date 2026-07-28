@@ -437,6 +437,10 @@ class PlPlayerController with BlockConfigMixin {
 
   static PlayCallback? _playCallBack;
 
+  // 由当前视频页注册：播放链接失效（403/打不开）时重新拉取 playurl
+  // 而非复用过期的 dataSource，避免卡住不动只能重新进入。
+  static Future<void> Function()? onUrlExpired;
+
   static Future<void>? playIfExists() {
     return _playCallBack?.call();
   }
@@ -866,6 +870,11 @@ class PlPlayerController with BlockConfigMixin {
   Future<void>? refreshPlayer() {
     if (dataSource is FileSource) {
       return null;
+    }
+    // 链接过期：优先重新拉取 playurl（由当前视频页注册），
+    // 回退到复用现有 dataSource（保留原有行为）。
+    if (onUrlExpired case final refresh?) {
+      return refresh();
     }
     if (_videoPlayerController case final ctr? when (ctr.current.isNotEmpty)) {
       return ctr.open(

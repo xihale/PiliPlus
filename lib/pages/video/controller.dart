@@ -350,6 +350,8 @@ class VideoDetailController extends GetxController
   void onInit() {
     super.onInit();
     args = Get.arguments;
+    // 链接过期时由播放器回调，重新拉取 playurl（保留播放位置）
+    PlPlayerController.onUrlExpired = () => queryVideoUrl(fromReset: true);
     videoType = args['videoType'];
     if (videoType == VideoType.pgc) {
       if (!isLoginVideo) {
@@ -1232,6 +1234,7 @@ class VideoDetailController extends GetxController
 
   @override
   void onClose() {
+    PlPlayerController.onUrlExpired = null;
     cid.close();
     if (isFileSource) {
       cacheLocalProgress();
